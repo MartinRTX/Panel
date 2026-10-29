@@ -1,0 +1,12 @@
+{
+  "appId": "com.martinrtx.panel",
+  "appName": "Panel",
+  "webDir": "www",
+  "server": {
+    "url": "https://martinrtx.github.io/Panel/",
+    "errorPath": "error.html"
+  },
+  "android": {
+    "backgroundColor": "#0B0D12"
+  }
+}

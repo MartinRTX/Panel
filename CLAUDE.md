@@ -1,6 +1,9 @@
 # Panel – notas para Claude
 
 Tablero de Martin: PWA en GitHub Pages (`main` → https://martinrtx.github.io/Panel/), hermana de Gym y Finanzas.
+Martin la usa como **APK** (Capacitor, carpeta `apk/`): un cascarón que carga esa misma página. El workflow "APK Android"
+la compila y la publica en Releases (tag `apk`, `Panel.apk`) desde `main`; se firma con los secretos `KEYSTORE_B64` / `KEYSTORE_PASS`.
+El plugin nativo `Panel.abrirApp` abre las APK de Gym (`com.martinrtx.gym`) y Finanzas (`com.martinrtx.finanzas`).
 Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (registro, metas, guardadas, plan semanal y resumen).
 
 ## Cómo se conecta

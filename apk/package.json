@@ -1,0 +1,14 @@
+{
+  "name": "panel-apk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cascarón nativo (Capacitor) de Panel: carga https://martinrtx.github.io/Panel/ y agrega el gesto atrás nativo y abrir tus APK de Gym y Finanzas desde los botones rápidos",
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

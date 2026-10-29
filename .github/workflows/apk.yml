@@ -1,0 +1,138 @@
+# Compila el APK de Panel en los servidores de GitHub (no necesitas Android Studio), igual que Gym y Finanzas.
+# Se corre solo cuando cambias algo en la carpeta apk/ o este archivo, o a mano desde la pestaña Actions.
+# Resultado: en "Releases" del repo aparece Panel.apk para instalar desde el celular (solo desde main;
+# en otras ramas queda como artefacto de prueba y no reemplaza el APK que instalas).
+# El APK es un cascarón: carga https://martinrtx.github.io/Panel/, así que las mejoras de la app llegan solas
+# por GitHub Pages. Solo se vuelve a instalar si cambia la carpeta apk/.
+#
+# Firma: usa los secretos KEYSTORE_B64 y KEYSTORE_PASS (los mismos de Gym y Finanzas sirven).
+# Si no existen, firma con una llave temporal: el APK instala bien, pero para actualizarlo tendrías que
+# desinstalar el anterior. Por eso conviene poner los secretos.
+name: APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apk/**'
+      - '.github/workflows/apk.yml'
+
+permissions:
+  contents: write
+
+# Dos publicaciones seguidas: se cancela la anterior (si no, la vieja podría quedar al final en Releases)
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar Capacitor
+        run: npm install --no-audit --no-fund
+
+      - name: Crear el proyecto Android
+        run: npx cap add android
+
+      - name: Ícono y pantalla de arranque de Panel
+        # apk/icono/ lo arma herramientas/iconos.js: ícono completo + las dos capas del adaptable (Android 8+).
+        run: |
+          mkdir -p assets
+          cp icono/icon-only.png icono/icon-foreground.png icono/icon-background.png assets/
+          cp icono/icon-only.png assets/splash.png
+          npx --yes @capacitor/assets@3.0.5 generate --android \
+            --iconBackgroundColor '#0E1330' --iconBackgroundColorDark '#0E1330' \
+            --splashBackgroundColor '#0B0D12' --splashBackgroundColorDark '#0B0D12'
+          ls android/app/src/main/res/mipmap-anydpi-v26/
+          ls android/app/src/main/res/mipmap-xxxhdpi/
+
+      - name: Código nativo de Panel y permisos
+        # MainActivity registra el plugin "Panel" (abrir tus APK de Gym y Finanzas).
+        # <queries>: desde Android 11 hay que declarar qué apps quieres poder abrir.
+        # allowBackup=false: tus claves y tus comidas guardadas no se suben al respaldo de Google del celular.
+        run: |
+          J=android/app/src/main/java/com/martinrtx/panel
+          mkdir -p "$J" && cp native/java/*.java "$J"/
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
+          grep -q 'com.martinrtx.gym' "$M" || sed -i 's#<application#<queries>\n        <package android:name="com.martinrtx.gym" />\n        <package android:name="com.martinrtx.finanzas" />\n    </queries>\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <application#' "$M"
+          cat "$M"
+
+      - name: Número de versión (sube solo en cada compilación)
+        run: |
+          # versionCode = minutos desde el 1/1/2026: siempre sube y Android instala encima
+          CODIGO=$(( ($(date +%s) - 1767225600) / 60 ))
+          echo "versionCode $CODIGO"
+          sed -i -E "s/versionCode [0-9]+/versionCode $CODIGO/" android/app/build.gradle
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
+      - name: Sincronizar
+        run: npx cap sync android
+
+      - name: Compilar
+        working-directory: apk/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Firmar
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ]; then
+            echo "$KS_B64" | base64 -d > llave.jks
+            ALIAS=$(keytool -list -keystore llave.jks -storepass "$KS_PASS" | grep -i PrivateKeyEntry | head -1 | cut -d, -f1)
+            FIRMA="tu llave ($ALIAS)"
+          else
+            echo "::warning::Faltan los secretos KEYSTORE_B64 y KEYSTORE_PASS: se firma con una llave temporal"
+            KS_PASS=temporal123; ALIAS=panel
+            keytool -genkeypair -keystore llave.jks -storepass "$KS_PASS" -keypass "$KS_PASS" -alias "$ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Panel"
+            FIRMA="una llave temporal (para actualizar, desinstala la anterior)"
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk alineado.apk
+          "$BT/apksigner" sign --ks llave.jks --ks-key-alias "$ALIAS" --ks-pass pass:"$KS_PASS" --key-pass pass:"$KS_PASS" --out Panel.apk alineado.apk
+          "$BT/apksigner" verify Panel.apk
+          rm -f llave.jks
+          echo "$FIRMA" > firma.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panel-apk
+          path: |
+            apk/Panel.apk
+            apk/firma.txt
+
+  publicar:
+    needs: apk
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: panel-apk
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la
+          FIRMA=$(cat firma.txt)
+          gh release delete apk --yes --cleanup-tag --repo "${{ github.repository }}" || true
+          gh release create apk Panel.apk --repo "${{ github.repository }}" \
+            --title "App Panel para Android" \
+            --notes "Compilación ${{ github.run_number }}, firmada con ${FIRMA}. Descarga Panel.apk en tu Pixel e instálala. Las mejoras de la app llegan solas por GitHub Pages; solo vuelves a instalar si cambia la carpeta apk/."

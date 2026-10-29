@@ -60,12 +60,29 @@ Para Gym y Finanzas **no hay que desplegar nada nuevo**: Panel lee los mismos Ap
 > Si prefieres que las URL no queden en el repo (es público), sáltate este paso y pégalas en la app, en el paso 6.
 > Sin la clave las URL no sirven para nada, por eso es seguro dejarlas en `config.js`. **La clave nunca va en el repo.**
 
-## 5. Instalar Panel en tu Pixel 10 Pro (1 min)
+## 5. Instalar Panel en tu Pixel 10 Pro como APK (5 min)
 
-1. En el Pixel abre **Chrome** y entra a https://martinrtx.github.io/Panel/
-2. Menú **⋮ › Instalar app** (si no aparece: **Agregar a la pantalla principal › Instalar**).
-3. Queda el ícono **Panel** (cuatro cuadritos: morado, verde, naranja y blanco). Ábrelo desde ahí.
-4. Atajos: deja presionado el ícono › **Registrar comida** o **Plan de la semana**.
+Es una app de verdad (APK), como tus apps Gym y Finanzas: GitHub la compila sola y la deja en **Releases**.
+
+1. **Una sola vez, para que se pueda actualizar encima sin desinstalar:** en
+   https://github.com/MartinRTX/Panel/settings/secrets/actions toca **New repository secret** y crea los mismos dos
+   que tienes en Gym y Finanzas:
+   - `KEYSTORE_B64` (el texto en base64 de tu llave)
+   - `KEYSTORE_PASS` (su contraseña)
+
+   Después ve a **Actions › APK Android › Run workflow** (rama `main`) para que se vuelva a compilar con tu llave.
+   Si no tienes esos valores a la mano, sáltate esto: el APK se firma con una llave temporal y funciona igual;
+   solo que si algún día cambia la carpeta `apk/`, tendrás que desinstalar Panel antes de instalar la nueva.
+2. Espera a que **Actions › APK Android** termine en verde (unos 5 minutos).
+3. En el Pixel abre https://github.com/MartinRTX/Panel/releases/tag/apk y descarga **Panel.apk**.
+4. Ábrelo desde la notificación de descarga › **Instalar**. Si Android pide permiso para "instalar apps desconocidas"
+   desde Chrome, actívalo (es lo mismo que hiciste con Gym y Finanzas).
+5. Queda el ícono **Panel** (cuatro cuadritos: morado, verde, naranja y blanco). Ábrelo; la primera vez necesita internet.
+6. Si antes instalaste Panel desde Chrome como página, bórrala: mantén presionado su ícono › **Desinstalar**.
+
+En el APK, los botones **Abrir Gym**, **Abrir Finanzas** y **Registrar gasto** abren tus APK de Gym y Finanzas
+(Registrar gasto entra directo al registro). El gesto atrás cierra lo abierto, en Comidas regresa a Hoy y en Hoy manda Panel al fondo.
+Las mejoras de la app llegan solas (por GitHub Pages); solo reinstalas si cambia la carpeta `apk/`.
 
 ## 6. Poner las claves en la app (2 min)
 
@@ -117,8 +134,7 @@ Para Gym y Finanzas **no hay que desplegar nada nuevo**: Panel lee los mismos Ap
     la barra se pone amarilla si gastas más rápido que el mes y roja si te pasas.
 13. **Solo pestañas nuevas**: Panel nunca usa "Historial" ni "Respuestas de formulario 2" (los manda el script de Finanzas, pero se ignoran).
 14. **Botones rápidos**: Abrir Gym, Abrir Finanzas, Registrar gasto (abre Finanzas en "gasto") y Registrar comida (en Panel).
-    Abren la versión web; si tienes Gym/Finanzas instaladas como app de Chrome, Android las abre ahí. Tus APK de Gym y Finanzas
-    no se pueden abrir desde un link (no tienen un "intent-filter" para links); si lo quieres, se agrega en esos repos.
+    En el APK abren tus APK de Gym y Finanzas; si alguna no está instalada, abren su página en el navegador.
 
 **Comidas**
 15. **Metas iniciales**: 2,300 kcal y 140 g de proteína; la grasa al 25 % de las calorías (**64 g**) y los carbohidratos con

@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.0';
+const VERSION_APP = '1.1';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -38,6 +38,22 @@ function haceCuanto(ts) {
   const d = Math.round(h / 24); return 'hace ' + d + (d === 1 ? ' día' : ' días');
 }
 function vibrar(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
+
+/* ----- APK de Android (Capacitor, carpeta apk/): mismos archivos; dentro del APK los botones abren tus otras APK ----- */
+const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+function nativo(plugin, metodo, opts) {
+  try { return window.Capacitor.nativePromise(plugin, metodo, opts || {}).catch(() => null); } catch (e) { return Promise.resolve(null); }
+}
+// Paquete de cada APK; si no está instalada se abre su página en el navegador. "gasto" abre Finanzas directo en registrar gasto.
+const APKS = { gym: { paquete: 'com.martinrtx.gym' }, finanzas: { paquete: 'com.martinrtx.finanzas' },
+               gasto: { paquete: 'com.martinrtx.finanzas', extra: 'finanzas_accion', valor: 'gasto' } };
+function abrirApp(ev, k) {
+  if (!NATIVO) return true;               // en el navegador, el link normal
+  if (ev) ev.preventDefault();
+  vibrar(8);
+  nativo('Panel', 'abrirApp', Object.assign({ url: CONFIG.APPS[k] }, APKS[k])).then(r => { if (!r) toast('No pude abrir ' + (k === 'gym' ? 'Gym' : 'Finanzas')); });
+  return false;
+}
 function saludo() { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; }
 
 let TOAST_T = null, TOAST_FN = null;
@@ -165,8 +181,8 @@ function tagFuente(f) {
   return '<button class="tag ok" onclick="actualizarHoy(true)">' + haceCuanto(x.ts) + '</button>';
 }
 function rapidos() {
-  const A = CONFIG.APPS, a = (url, cls, ico, txt) => '<a class="rapido" href="' + esc(url) + '" target="_blank" rel="noopener"><span class="ic ' + cls + '">' + ico + '</span>' + txt + '</a>';
-  return '<div class="rapidos">' + a(A.gym, 'gym', SVG.pesa, 'Abrir Gym') + a(A.finanzas, 'fin', SVG.grafica, 'Abrir Finanzas') + a(A.gasto, 'gasto', SVG.menos, 'Registrar gasto') +
+  const A = CONFIG.APPS, a = (k, cls, ico, txt) => '<a class="rapido" href="' + esc(A[k]) + '" target="_blank" rel="noopener" onclick="return abrirApp(event,\'' + k + '\')"><span class="ic ' + cls + '">' + ico + '</span>' + txt + '</a>';
+  return '<div class="rapidos">' + a('gym', 'gym', SVG.pesa, 'Abrir Gym') + a('finanzas', 'fin', SVG.grafica, 'Abrir Finanzas') + a('gasto', 'gasto', SVG.menos, 'Registrar gasto') +
     '<button class="rapido" onclick="abrirAgregar()"><span class="ic com">' + SVG.mas + '</span>Registrar comida</button></div>';
 }
 function errorFuente(f) {
@@ -199,7 +215,7 @@ function seccionGym(k) {
     : g.ultimo ? 'Última vez: <b>' + g.ultimo + '</b>' + (g.ultimoFecha ? ' · ' + diaCorto(g.ultimoFecha) : '') + '. La rotación avanza solo cuando entrenas.' : 'La rotación avanza solo cuando entrenas.';
   h += '<div class="hero gym"><div class="lbl">' + lbl + '</div><div class="big">' + esc(g.grupo) + '<small>' + esc(g.nombre) + '</small></div><div class="of">' + linea + '</div>' +
     '<div class="pie"><div class="rot">' + CALC.GRUPOS3.map(n => '<span class="' + (n === g.grupo ? 'on' + (g.entreno ? ' hecho' : '') : '') + '">' + n + '</span>').join('') + '</div>' +
-    '<a class="btnh" href="' + esc(CONFIG.APPS.gym) + '" target="_blank" rel="noopener">' + (g.entreno || g.descansa ? 'Abrir Gym' : 'A entrenar') + ' ›</a></div></div>';
+    '<a class="btnh" href="' + esc(CONFIG.APPS.gym) + '" target="_blank" rel="noopener" onclick="return abrirApp(event,\'gym\')">' + (g.entreno || g.descansa ? 'Abrir Gym' : 'A entrenar') + ' ›</a></div></div>';
   // Semana: días de gym, km de trote, peso y cintura
   const iHoy = (diaSemana(k) + 6) % 7, L = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   const prev = g.semanas.length >= 2 ? g.semanas[g.semanas.length - 2].km : null, ult = g.semanas.slice(-6), mx = Math.max.apply(null, ult.map(s => s.km).concat([1]));
@@ -317,7 +333,15 @@ function cerrarHoja(desdeAtras) {
   if (RECARGA_PENDIENTE) location.reload();
   else pintar();
 }
-window.addEventListener('popstate', () => { if (HOJA_FN) cerrarHoja(true); });
+// Siempre queda una entrada extra en el historial (la "guardia"): el gesto atrás cierra la hoja abierta,
+// en Comidas regresa a Hoy, y en Hoy sale (en el APK la app se va al fondo, como Gym y Finanzas).
+function ponerGuardia() { if (!(history.state && (history.state.guardia || history.state.hoja))) { try { history.pushState({ guardia: 1 }, ''); } catch (e) {} } }
+window.addEventListener('popstate', () => {
+  if (HOJA_FN) return cerrarHoja(true);
+  if (history.state && (history.state.guardia || history.state.hoja)) return;
+  if (TAB !== 'hoy') { verTab('hoy'); ponerGuardia(); return; }
+  if (NATIVO) { nativo('App', 'minimizeApp'); ponerGuardia(); } else history.back();
+});
 const cabeza = titulo => '<div class="grab"><h3 id="hojaTitulo">' + titulo + '</h3><button class="x" onclick="cerrarHoja()" aria-label="Cerrar">' + SVG.x + '</button></div>';
 const interruptor = (on, fn, titulo, sub) => '<button class="switch" role="switch" aria-checked="' + !!on + '" onclick="' + fn + '"><span><span class="t1" style="font-size:15px">' + titulo + '</span>' +
   (sub ? '<br><span class="muted">' + sub + '</span>' : '') + '</span><span class="knob"></span></button>';
@@ -449,6 +473,7 @@ function arrancar() {
   const p = new URLSearchParams(location.search), accion = p.get('accion');
   if (accion === 'comida' || accion === 'semana') { TAB = 'comidas'; if (accion === 'semana') SUB = 'semana'; }
   if (p.toString() || location.hash) history.replaceState(null, '', location.pathname);
+  ponerGuardia();
   pintar();
   if (accion === 'comida') setTimeout(() => abrirAgregar(), 300);
   actualizarHoy(); sincronizar();
