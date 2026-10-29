@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.1';
+const VERSION_APP = '1.2';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -139,11 +139,32 @@ function recortarFin(d) {
     personas: (d.personas || []).map(p => toma(p, ['nombre', 'saldoCorte', 'fechaCorte', 'archivada'])),
     movs: (d.movs || []).map(m => toma(m, ['fecha', 'tipo', 'monto', 'cuenta', 'aCuenta', 'categoria', 'persona'])) };
 }
+// Qué script contestó: así una URL pegada en el lugar equivocado se avisa en vez de mostrar datos raros
+function queScript(d) {
+  if (d && Array.isArray(d.registro) && Array.isArray(d.guardadas)) return 'com';
+  if (d && Array.isArray(d.cuentas)) return 'fin';
+  if (d && (d.sugGrupo !== undefined || d.exercises || d.resumen || d.todayKey)) return 'gym';
+  return null;
+}
+function revisarScript(f, d) {
+  const es = queScript(d);
+  if (es === f) return;
+  throw new Error('Esa URL ' + (es ? 'es la de tu script de ' + FUENTES[es].nombre : 'no es de tu script') + ', no la de ' + FUENTES[f].nombre +
+    '. Corrige ' + FUENTES[f].conf + ' en config.js (o pega la correcta aquí).');
+}
+// Dos partes con la misma URL: una está mal
+function urlsRepetidas() {
+  const vistas = {}, rep = [];
+  ['gym', 'fin', 'com'].forEach(f => { const u = urlDe(f); if (!u) return; if (vistas[u]) rep.push([vistas[u], f]); else vistas[u] = f; });
+  return rep.map(([a, b]) => FUENTES[a].nombre + ' y ' + FUENTES[b].nombre);
+}
 async function actualizarFuente(f, avisar) {
   if (!conectada(f) || CARGANDO[f]) return;
   CARGANDO[f] = true;
   try {
-    const d = await llamar(f, { action: 'data', args: [] }), rec = f === 'gym' ? recortarGym(d) : recortarFin(d), ts = Date.now();
+    const d = await llamar(f, { action: 'data', args: [] });
+    revisarScript(f, d);
+    const rec = f === 'gym' ? recortarGym(d) : recortarFin(d), ts = Date.now();
     LS.set('pan_' + f, { d: rec, ts });
     DATOS[f] = { d: rec, ts, ejemplo: false, error: null };
   } catch (e) {
@@ -167,8 +188,11 @@ function pintarHoy() {
   const k = hoy();
   const fl = fechaLarga(k);
   let h = '<div class="saludo"><div class="fecha">' + fl[0].toUpperCase() + fl.slice(1) + '</div><div class="hola">' + saludo() + ', Martin</div></div>' + rapidos();
-  if (DATOS.gym.ejemplo || DATOS.fin.ejemplo) h += '<div class="note" style="margin-top:12px">' + (DATOS.gym.ejemplo && DATOS.fin.ejemplo ? 'Gym y Finanzas muestran' : (DATOS.gym.ejemplo ? 'Gym muestra' : 'Finanzas muestra')) +
-    ' <b>datos de ejemplo</b> hasta que conectes tus hojas. <button class="link" style="padding:0;min-height:0;color:inherit;text-decoration:underline" onclick="abrirAjustes(\'conexion\')">Conectar</button></div>';
+  const rep = urlsRepetidas(), ej = ['gym', 'fin'].filter(f => DATOS[f].ejemplo), sinClave = ej.filter(f => urlDe(f) && !claveDe(f));
+  const ir = txt => ' <button class="link" style="padding:0;min-height:0;color:inherit;text-decoration:underline" onclick="abrirAjustes(\'conexion\')">' + txt + '</button>';
+  if (rep.length) h += '<div class="note red" style="margin-top:12px"><b>' + rep.join(', ') + ' tienen la misma URL</b>: una de las dos está mal. Revisa config.js.' + ir('Ver conexión') + '</div>';
+  if (ej.length) h += '<div class="note" style="margin-top:12px">' + (ej.length === 2 ? 'Gym y Finanzas muestran' : FUENTES[ej[0]].nombre + ' muestra') + ' <b>datos de ejemplo</b>' +
+    (sinClave.length ? ': falta poner tu clave en esta app. Si la pusiste en Chrome, en la APK se pone otra vez (no comparten datos).' + ir('Poner clave') : ' hasta que conectes tus hojas.' + ir('Conectar')) + '</div>';
   h += '<h2>Gym ' + tagFuente('gym') + '</h2>' + seccionGym(k);
   h += '<h2>Finanzas ' + tagFuente('fin') + '</h2>' + seccionFin(k);
   return h;
@@ -305,12 +329,13 @@ function pintar(anima) {
 function pintarSync() {
   const el = $('sync'), n = cola().length;
   if (!conectada('com')) { el.className = 'sync'; el.textContent = '📱 En el celular'; }
+  else if (COM_ERROR) { el.className = 'sync pend'; el.textContent = '⚠ Revisa Comidas'; }
   else if (ENVIANDO) { el.className = 'sync'; el.textContent = 'Subiendo…'; }
   else if (n) { el.className = 'sync pend'; el.textContent = n + ' sin subir' + (navigator.onLine === false ? ' · sin señal' : ''); }
   else { el.className = 'sync ok'; el.textContent = '✓ Al día'; }
 }
 function tocarSync() {
-  if (!conectada('com')) return abrirAjustes('conexion');
+  if (!conectada('com') || COM_ERROR) return abrirAjustes('conexion');
   toast('Sincronizando…'); sincronizar(true); actualizarHoy();
 }
 
@@ -371,7 +396,10 @@ function hojaAjustes() {
     '<div class="btns" style="margin-top:10px"><button class="btn sm ghost" onclick="repartir()">Repartir el resto</button><button class="btn sm" onclick="guardarMetasForm()">Guardar metas</button></div>' +
     '<div class="hint">"Repartir" deja tus kcal y tu proteína, pone la grasa en 25 % de las calorías y los carbohidratos con lo que queda.</div>';
   // Conexión
+  const rep = urlsRepetidas();
   h += '<div class="fl" id="aj-conexion">Conexión con tus hojas</div>' +
+    (rep.length ? '<div class="note red"><b>' + rep.join(', ') + ' tienen la misma URL.</b> Cada hoja tiene su propio Apps Script: copia cada URL desde ' +
+      'su hoja (Extensiones › Apps Script › Implementar › Gestionar implementaciones).</div>' : '') +
     '<div class="hint" style="margin:0 2px 10px">La URL va en <b>config.js</b> (o pégala aquí). La clave es la misma que pusiste en cada Apps Script y solo se guarda en este celular.</div>' +
     ['gym', 'fin', 'com'].map(bloqueConexion).join('');
   if (rech.length) h += '<div class="note red"><b>La hoja de Comidas no aceptó ' + rech.length + (rech.length === 1 ? ' cambio' : ' cambios') + ':</b><br>' +
@@ -391,9 +419,9 @@ function hojaAjustes() {
   return h;
 }
 function bloqueConexion(f) {
-  const F = FUENTES[f], c = conexiones()[f] || {}, deConfig = !!urlConfig(f), x = DATOS[f];
+  const F = FUENTES[f], c = conexiones()[f] || {}, deConfig = !!urlConfig(f), x = f === 'com' ? { error: COM_ERROR } : DATOS[f];
   let estado;
-  if (conectada(f)) estado = f === 'com' ? '<span class="tag ok">Conectada</span>' : (x && x.error ? '<span class="tag err">Con error</span>' : '<span class="tag ok">Conectada</span>');
+  if (conectada(f)) estado = x && x.error ? '<span class="tag err">Con error</span>' : '<span class="tag ok">Conectada</span>';
   else estado = '<span class="tag ej">' + (!urlDe(f) ? 'Falta la URL' : 'Falta la clave') + '</span>';
   const app = F.app ? [LS.get(F.app[0], ''), LS.get(F.app[1], '')] : null;
   const detecta = app && urlValida(app[0]) && app[1] && (app[0] !== urlDe(f) || app[1] !== claveDe(f));
@@ -416,8 +444,8 @@ async function probarConexion(f) {
   if (otraHoja) LS.del('pan_primera_ok');      // hoja nueva: tus comidas guardadas se vuelven a revisar contra ella
   toast('Probando ' + FUENTES[f].nombre + '…');
   if (f === 'com') {
-    try { await llamar('com', { action: 'ping' }); toast('Comidas conectada ✓ Subiendo lo de tu celular…'); sincronizar(true); }
-    catch (e) { toast('Comidas: ' + mensajeError(e)); }
+    try { LS.del('pan_com_ok'); await verificarComidas(); toast('Comidas conectada ✓ Subiendo lo de tu celular…'); sincronizar(true); }
+    catch (e) { COM_ERROR = mensajeError(e); toast('Comidas: ' + COM_ERROR); }
   } else {
     DATOS[f] = { d: (LS.get('pan_' + f, null) || {}).d || null, ts: 0, ejemplo: false, error: null };
     await actualizarFuente(f, true);

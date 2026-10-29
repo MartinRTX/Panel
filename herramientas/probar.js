@@ -36,14 +36,16 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   pagina.on('pageerror', e => errores.push(String(e)));
   // Apps Script de mentira
   let llamadasCom = 0;
-  await ctx.route('https://script.google.com/**', async ruta => {
+  const contestar = async ruta => {
     const u = ruta.request().url(), cuerpo = JSON.parse(ruta.request().postData() || '{}');
     let r;
     if (/GYMTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: EJEMPLO.gym(CALC.claveDia(new Date())) } : { ok: false, error: 'Clave incorrecta' };
     else if (/FINTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: Object.assign(EJEMPLO.finanzas(CALC.claveDia(new Date())), { historial: [{ fecha: '2025-07-01', tipo: 'Gasto', monto: 1, categoria: 'X' }] }) } : { ok: false, error: 'Clave incorrecta' };
     else { llamadasCom++; r = hoja.post(cuerpo); }
     await ruta.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
-  });
+  };
+  ctx.__ruta = contestar;
+  await ctx.route('https://script.google.com/**', contestar);
   const foto = async nombre => { await pagina.waitForTimeout(350); await pagina.screenshot({ path: path.join(SALIDA, nombre + '.png'), fullPage: true }); };
   const texto = async () => pagina.locator('#view').innerText();
 
@@ -158,6 +160,32 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await pagina.evaluate(() => window.dispatchEvent(new Event('online')));
   await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
   ok(await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al volver la señal se sube');
+
+  // 7. URL equivocada (la de Gym pegada en Comidas, como en config.js con dos URL iguales): se avisa y no se pierde nada
+  // Otro celular en limpio (otro contexto: nada guardado), con la URL de Gym también en Comidas
+  const ctx2 = await navegador.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', serviceWorkers: 'block' });
+  await ctx2.route('https://script.google.com/**', ruta => ctx.__ruta(ruta));
+  await ctx2.addInitScript(() => { if (!localStorage.getItem('pan_conexion')) localStorage.setItem('pan_conexion', JSON.stringify({
+    gym: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' }, com: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' } })); });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', e => errores.push(String(e)));
+  const antes = llamadasCom;
+  await p2.goto(base);
+  await p2.waitForSelector('.hero.gym');
+  await p2.click('#tComidas');
+  await p2.locator('.comida-acc button.una', { hasText: 'Licuado' }).first().click();
+  await p2.waitForTimeout(2500);
+  ok((await p2.locator('#sync').innerText()).includes('Revisa Comidas'), 'Comidas con la URL de Gym: la pastilla avisa');
+  ok(await p2.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) > 0 && llamadasCom === antes, 'no se manda nada al script equivocado y la cola se conserva');
+  await p2.click('#tHoy');
+  ok(/tienen la misma URL/.test(await p2.locator('#view').innerText()), 'Hoy avisa que dos partes tienen la misma URL');
+  await p2.click('.appbar .iconbtn');
+  ok(/es la de tu script de Gym, no la de Comidas/.test(await p2.locator('.sheet').innerText()), 'Ajustes explica cuál URL está mal');
+  // Al corregirla se sube todo
+  await p2.fill('#u-com', 'https://script.google.com/macros/s/COMTEST2/exec');
+  await p2.locator('#u-com ~ .btns .btn:not(.ghost)').click();
+  await p2.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
+  ok(await p2.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al corregir la URL se sube lo pendiente');
 
   ok(!errores.length, 'sin errores en la consola' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await navegador.close();

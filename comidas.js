@@ -52,7 +52,17 @@ function cambiar(action, args, tag) {
 }
 
 /* ===================== Cola para subir a la hoja ===================== */
-let ENVIANDO = false, BAJANDO = false, ENVIOS = 0, ENVIO_T = null;
+let ENVIANDO = false, BAJANDO = false, ENVIOS = 0, ENVIO_T = null, COM_ERROR = null;
+// Antes de mandar nada: que la URL sea de verdad el script de Comidas (si fuera el de Gym, tus comidas se rechazarían
+// y se perderían de la cola). Se revisa una vez por URL.
+async function verificarComidas() {
+  const u = urlDe('com');
+  if (LS.get('pan_com_ok', '') === u) return true;
+  const d = await llamar('com', { action: 'data', args: [1] });
+  revisarScript('com', d);
+  LS.set('pan_com_ok', u); COM_ERROR = null;
+  return true;
+}
 function cola() { return LS.get('pan_cola', []); }
 function encolar(op) {
   // Del mismo dato solo cuenta el último cambio (si aún no va en camino)
@@ -69,7 +79,15 @@ async function enviar() {
   let fallo = false;
   const rechazados = [];
   try {
-    for (let vuelta = 0; vuelta < 50; vuelta++) {
+    let verificada = true;
+    try { await verificarComidas(); }
+    catch (e) {
+      // URL o clave equivocada: no se manda nada (se queda todo en la cola) hasta que la corrijas; sin señal, se reintenta
+      verificada = false;
+      if (/Esa URL|Clave/.test(e.message)) COM_ERROR = mensajeError(e); else fallo = true;
+    }
+    if (verificada) COM_ERROR = null;
+    for (let vuelta = 0; verificada && vuelta < 50; vuelta++) {
       const lote = cola().slice(0, 80);
       if (!lote.length) break;
       const ids = new Set(lote.map(x => x.id));
@@ -112,13 +130,19 @@ async function bajarComidas(avisar, intento) {
   try {
     const d = await llamar('com', { action: 'data', args: [DIAS_HOJA] }, 60000);
     if (ENVIOS !== n0 && (intento || 0) < 2) { repetir = true; return; }   // se subió algo mientras leía: se vuelve a leer
+    try { revisarScript('com', d); } catch (e) { COM_ERROR = e.message; if (avisar) toast('Comidas: ' + COM_ERROR); return; }   // nunca se borra lo tuyo con datos de otra hoja
+    COM_ERROR = null;
     const base = { registro: d.registro || [], guardadas: d.guardadas || [], plan: d.plan || [], metas: d.metas && d.metas.kcal ? d.metas : null };
-    // La primera vez que este celular lee la hoja: sube tus comidas guardadas que la hoja no tenga (tus dos de siempre)
-    // y tus metas si la hoja aún no tiene. Después, lo que diga la hoja manda.
-    if (!LS.get('pan_primera_ok', false)) DB.guardadas.forEach(g => {
-      if (base.guardadas.some(x => x.id === g.id)) return;
-      base.guardadas.push(g);
-      if (!cola().some(op => op.tag === 'gua:' + g.id)) encolar({ id: uid(), action: 'guardarGuardada', args: [g], tag: 'gua:' + g.id });
+    // La primera vez que este celular lee esta hoja: sube lo que tengas en el celular y la hoja no tenga
+    // (tus dos comidas de siempre, y cualquier registro o plan que no haya llegado) y tus metas si la hoja aún no tiene.
+    // Después, lo que diga la hoja manda.
+    if (!LS.get('pan_primera_ok', false)) [['guardadas', 'guardarGuardada', 'gua:'], ['registro', 'guardarRegistro', 'reg:'], ['plan', 'guardarPlan', 'plan:']].forEach(([lista, accion, tag]) => {
+      (DB[lista] || []).forEach(x => {
+        if (base[lista].some(y => y.id === x.id)) return;
+        if (lista !== 'guardadas' && x.fecha < sumarDias(hoy(), -DIAS_HOJA)) return;
+        base[lista].push(x);
+        if (!cola().some(op => op.tag === tag + x.id)) encolar({ id: uid(), action: accion, args: [x], tag: tag + x.id });
+      });
     });
     if (!base.metas) { base.metas = metas(); if (!cola().some(op => op.tag === 'metas')) encolar({ id: uid(), action: 'guardarMetas', args: [base.metas], tag: 'metas' }); }
     LS.set('pan_primera_ok', true);
