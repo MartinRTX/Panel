@@ -1,0 +1,2 @@
+Inter (fonts/inter.woff2) y Bricolage Grotesque (fonts/bricolage.woff2): las dos con SIL Open Font License 1.1.
+El texto de la licencia está en fonts/OFL.txt. Son las mismas fuentes de la app Finanzas.

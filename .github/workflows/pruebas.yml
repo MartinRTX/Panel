@@ -1,0 +1,25 @@
+# Pruebas automáticas en cada push y pull request (tarda menos de un minuto):
+#  - sintaxis de la app y del Apps Script, los scripts juntos como los carga index.html, y que sw.js guarde todo
+#  - cálculos (rutina, saldos, macros, resumen) y apps-script/Comidas.gs sobre una hoja de mentira
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sintaxis, variables repetidas y caché sin señal
+        run: node herramientas/revisar.js
+      - name: Cálculos y Apps Script de Comidas
+        run: node --test tests/*.test.js
