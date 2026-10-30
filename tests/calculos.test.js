@@ -163,3 +163,20 @@ test('Resumen semanal: promedios solo de los días registrados y días que cumpl
   assert.deepStrictEqual([R2.diasConRegistro, R2.promKcal, R2.hoy.kcal], [3, 2150, 900]);
   assert.strictEqual(CALC.lunesDe('2026-11-01'), '2026-10-26');   // domingo: su semana empezó el lunes anterior
 });
+
+test('Comidas de Gym: tiempo de comida (o por la hora), macros y lo viejo que solo tiene proteína', () => {
+  const r = CALC.deGym({ '2026-10-29': [{ id: 'a', h: '07:30', m: 'd', n: 'Mi licuado', p: 40, c: 60, f: 10, k: 490 }, { h: '14:05', m: '', n: 'Tupper', p: 45, c: 80, f: 26, k: 750 },
+    { h: '', m: 's', n: 'Manzana', p: 0.5, c: 25, f: 0.4, k: 94 }, { h: '21:00', m: 'n', n: 'Licuado (27 g)', p: 27, c: null, f: null, k: null }] });
+  assert.deepStrictEqual(r.map(x => [x.id, x.comida, x.kcal, x.sinMacros]),
+    [['gym-a', 'desayuno', 490, false], ['gym-2026-10-29-1', 'comida', 750, false], ['gym-2026-10-29-2', 'snack', 94, false], ['gym-2026-10-29-3', 'cena', 0, true]]);
+  const t = CALC.totalesDia(r, '2026-10-29');
+  assert.deepStrictEqual([t.kcal, t.p], [1334, 112.5]);
+});
+
+test('Frecuentes para el plan: lo que más comes, con los macros de la última vez', () => {
+  const d = (f, n, m, k) => ({ id: f + n, h: '', m, n, p: k / 10, c: 1, f: 1, k });
+  const r = CALC.deGym({ '2026-10-27': [d('27', 'Mi licuado', 'd', 480)], '2026-10-28': [d('28', 'Mi licuado', 'd', 490), d('28', 'Quesadillas', 'n', 500)],
+    '2026-10-29': [d('29', 'Mi licuado', 'd', 495)] });
+  const f = CALC.frecuentes(r);
+  assert.deepStrictEqual(f.map(x => [x.nombre, x.n, x.comida, x.kcal]), [['Mi licuado', 3, 'desayuno', 495], ['Quesadillas', 1, 'cena', 500]]);
+});

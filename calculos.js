@@ -219,6 +219,33 @@ const CALC = (() => {
       (sel.tam && sel.tam !== 'normal' ? ' (' + sel.tam + ')' : '');
   }
 
+  /* ----- Comidas registradas en tu app Gym (pestaña Comidas de su hoja) ----- */
+  const TIEMPO_GYM = { d: 'desayuno', c: 'comida', n: 'cena', s: 'snack' };
+  // Sin tiempo anotado, por la hora (como sugiere la app Gym)
+  const tiempoPorHora = h => { const x = Number(String(h || '').slice(0, 2)); return isNaN(x) || !h ? 'snack' : x >= 5 && x < 11 ? 'desayuno' : x >= 11 && x < 17 ? 'comida' : x >= 17 && x < 23 ? 'cena' : 'snack'; };
+  // dias = { 'aaaa-mm-dd': [{ h, m, n, p, c, f, k, … }] } → registros como los de Panel. Lo de antes que solo tiene proteína queda marcado
+  function deGym(dias) {
+    const out = [];
+    Object.keys(dias || {}).sort().forEach(f => (dias[f] || []).forEach((x, i) => {
+      out.push({ id: 'gym-' + (x.id || f + '-' + i), fecha: f, comida: TIEMPO_GYM[x.m] || tiempoPorHora(x.h), nombre: String(x.n || 'Comida'), hora: String(x.h || ''),
+        porcion: 1, kcal: Math.round(num(x.k)), p: r1(x.p), c: r1(x.c), g: r1(x.f), sinMacros: vacio(x.k), origen: 'gym', ref: String(x.ref || '') });
+    }));
+    return out;
+  }
+  // Lo que más comes (para el plan): por nombre, cuántas veces, en qué comida suele ir y con los macros de la última vez
+  function frecuentes(registro, max) {
+    const por = {};
+    (registro || []).filter(r => r.origen === 'gym' && !r.sinMacros && r.kcal > 0).forEach(r => {
+      const k = String(r.nombre).trim().toLowerCase();
+      const x = por[k] = por[k] || { nombre: String(r.nombre).trim(), n: 0, tiempos: {}, ultima: '' };
+      x.n++; x.tiempos[r.comida] = (x.tiempos[r.comida] || 0) + 1;
+      if (r.fecha >= x.ultima) Object.assign(x, { ultima: r.fecha, kcal: r.kcal, p: r.p, c: r.c, g: r.g });
+    });
+    return Object.keys(por).map(k => por[k]).map(x => ({ id: 'frec-' + x.nombre.toLowerCase().replace(/[^a-z0-9áéíóúñü]+/g, '-').slice(0, 50), nombre: x.nombre, n: x.n,
+      comida: Object.keys(x.tiempos).sort((a, b) => x.tiempos[b] - x.tiempos[a])[0], kcal: x.kcal, p: x.p, c: x.c, g: x.g }))
+      .sort((a, b) => b.n - a.n || a.nombre.localeCompare(b.nombre, 'es')).slice(0, max || 20);
+  }
+
   // Snacks y cosas sueltas para llenar rápido (por porción)
   const SUELTOS = [
     ['Manzana', '🍎', 94, 0.5, 25, 0.4], ['Plátano', '🍌', 105, 1.3, 27, 0.4], ['Yogurt griego', '🥛', 100, 17, 6, 0.7],
@@ -229,6 +256,6 @@ const CALC = (() => {
 
   return { pad, r1, r2, claveDia, sumarDias, difDias, diaSemana, lunesDe, GRUPOS3, NOMBRE_GRUPO, gymHoy, saldo, saldoPersona, finanzasHoy,
            COMIDAS, MAC, macrosDe, sumar, delDia, totalesDia, cumple, resumenSemana, repartirMetas, BASE, deIngredientes, SEMILLAS, CASERA, casera,
-           nombreCasera, SUELTOS };
+           nombreCasera, SUELTOS, deGym, frecuentes, tiempoPorHora };
 })();
 if (typeof module !== 'undefined') module.exports = CALC;

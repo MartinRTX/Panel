@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.2';
+const VERSION_APP = '1.3';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -45,13 +45,15 @@ function nativo(plugin, metodo, opts) {
   try { return window.Capacitor.nativePromise(plugin, metodo, opts || {}).catch(() => null); } catch (e) { return Promise.resolve(null); }
 }
 // Paquete de cada APK; si no está instalada se abre su página en el navegador. "gasto" abre Finanzas directo en registrar gasto.
+// "comida" abre Gym en su pestaña Comida (gymmb://accion/comida, como su widget; un APK de Panel anterior solo abre Gym).
 const APKS = { gym: { paquete: 'com.martinrtx.gym' }, finanzas: { paquete: 'com.martinrtx.finanzas' },
-               gasto: { paquete: 'com.martinrtx.finanzas', extra: 'finanzas_accion', valor: 'gasto' } };
+               gasto: { paquete: 'com.martinrtx.finanzas', extra: 'finanzas_accion', valor: 'gasto' },
+               comida: { paquete: 'com.martinrtx.gym', uri: 'gymmb://accion/comida' } };
 function abrirApp(ev, k) {
   if (!NATIVO) return true;               // en el navegador, el link normal
   if (ev) ev.preventDefault();
   vibrar(8);
-  nativo('Panel', 'abrirApp', Object.assign({ url: CONFIG.APPS[k] }, APKS[k])).then(r => { if (!r) toast('No pude abrir ' + (k === 'gym' ? 'Gym' : 'Finanzas')); });
+  nativo('Panel', 'abrirApp', Object.assign({ url: CONFIG.APPS[k] || CONFIG.APPS.gym }, APKS[k])).then(r => { if (!r) toast('No pude abrir ' + (k === 'gym' ? 'Gym' : 'Finanzas')); });
   return false;
 }
 function saludo() { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; }
@@ -127,7 +129,7 @@ function cargarCache() {
 const toma = (o, ks) => { const x = {}; if (o) ks.forEach(k => { if (o[k] !== undefined) x[k] = o[k]; }); return x; };
 // Solo lo que usa Hoy (para no llenar el celular con el catálogo de ejercicios o el historial)
 function recortarGym(d) {
-  return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso']), {
+  return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso', 'comidasDias', 'macros7']), {
     resumen: toma(d.resumen, ['semana', 'diasSemana', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7']),
     trotes: toma(d.trotes, ['semanas', 'km7']), cuerpo: toma(d.cuerpo, ['serie', 'actual', 'meta', 'base']),
     carrera: d.carrera && d.carrera.fecha ? toma(d.carrera, ['fecha', 'nombre']) : null });
@@ -180,7 +182,7 @@ async function actualizarHoy(avisar) {
   const algo = conectada('gym') || conectada('fin');
   if (avisar && !algo) return abrirAjustes('conexion');
   if (avisar) toast('Actualizando…');
-  await Promise.all([actualizarFuente('gym', avisar), actualizarFuente('fin', avisar)]);
+  await Promise.all([actualizarFuente('gym', avisar), actualizarFuente('fin', avisar), leerComidasGym(avisar)]);
 }
 
 /* ----- Pantalla Hoy ----- */
@@ -207,7 +209,7 @@ function tagFuente(f) {
 function rapidos() {
   const A = CONFIG.APPS, a = (k, cls, ico, txt) => '<a class="rapido" href="' + esc(A[k]) + '" target="_blank" rel="noopener" onclick="return abrirApp(event,\'' + k + '\')"><span class="ic ' + cls + '">' + ico + '</span>' + txt + '</a>';
   return '<div class="rapidos">' + a('gym', 'gym', SVG.pesa, 'Abrir Gym') + a('finanzas', 'fin', SVG.grafica, 'Abrir Finanzas') + a('gasto', 'gasto', SVG.menos, 'Registrar gasto') +
-    '<button class="rapido" onclick="abrirAgregar()"><span class="ic com">' + SVG.mas + '</span>Registrar comida</button></div>';
+    '<button class="rapido" onclick="abrirGymComida()"><span class="ic com">' + SVG.mas + '</span>Registrar comida</button></div>';
 }
 function errorFuente(f) {
   const x = DATOS[f];
@@ -254,7 +256,7 @@ function seccionGym(k) {
     '<div class="stat"><div class="muted">Cintura</div><div class="v">' + fmt1(g.cintura.ultima) + '<small>cm</small></div>' +
       tendencia(g.cintura.cambio, 'cm', 'vs la anterior') + spark(g.cintura.serie.slice(-8).map(p => p.v), 'var(--gras)') + '</div></div>';
   if (!g.fresca && g.fechaDatos) h += '<div class="muted small" style="margin:-4px 4px 12px">Lo de la semana se pone en ceros: tu hoja de Gym no se ha leído desde el ' + diaCorto(g.fechaDatos) + '.</div>';
-  return h + tarjetaCarrera(k, g);
+  return h + tarjetaCarrera(k, g) + tarjetaComidaHoy(k);
 }
 function tarjetaCarrera(k, g) {
   const c = CONFIG.CARRERA && CONFIG.CARRERA.fecha ? CONFIG.CARRERA : (g.carrera ? { nombre: 'Carrera ' + g.carrera.nombre, fecha: g.carrera.fecha } : null);
@@ -384,7 +386,7 @@ function abrirAjustes(seccion) {
   if (seccion) setTimeout(() => { const el = $('aj-' + seccion); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 120);
 }
 function hojaAjustes() {
-  const tema = LS.get('pan_tema', 'auto'), m = metas(), rech = LS.get('pan_rechazados', []);
+  const tema = LS.get('pan_tema', 'auto'), m = metas(), rech = LS.get('pan_rechazados', []), metasPend = LS.get('pan_metas_gym', null);
   let h = cabeza('Ajustes');
   h += '<div class="fl">Tema</div><div class="seg">' + [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']]
     .map(([k, t]) => '<button class="' + (tema === k ? 'on' : '') + '" onclick="elegirTema(\'' + k + '\')">' + t + '</button>').join('') + '</div>';
@@ -394,7 +396,9 @@ function hojaAjustes() {
       '<div><label for="m-' + k + '">' + t + '</label><input class="inp" id="m-' + k + '" type="number" inputmode="numeric" min="0" value="' + Math.round(m[k]) + '" oninput="sumaMetas()"></div>').join('') + '</div>' +
     '<div class="hint" id="sumaMetas">' + textoSumaMetas(m) + '</div>' +
     '<div class="btns" style="margin-top:10px"><button class="btn sm ghost" onclick="repartir()">Repartir el resto</button><button class="btn sm" onclick="guardarMetasForm()">Guardar metas</button></div>' +
-    '<div class="hint">"Repartir" deja tus kcal y tu proteína, pone la grasa en 25 % de las calorías y los carbohidratos con lo que queda.</div>';
+    '<div class="hint">"Repartir" deja tus kcal y tu proteína, pone la grasa en 25 % de las calorías y los carbohidratos con lo que queda. ' +
+    'Tus metas mandan: la proteína se vuelve tu meta en la app Gym y las demás también se guardan allá.</div>' +
+    (metasPend ? '<div class="hint amber">Gym todavía no tiene estas metas: ' + (conectada('gym') ? 'falta agregar Panel.gs a su script (GYM-PANEL.md).' : 'conecta Gym.') + '</div>' : '');
   // Conexión
   const rep = urlsRepetidas();
   h += '<div class="fl" id="aj-conexion">Conexión con tus hojas</div>' +
@@ -405,14 +409,15 @@ function hojaAjustes() {
   if (rech.length) h += '<div class="note red"><b>La hoja de Comidas no aceptó ' + rech.length + (rech.length === 1 ? ' cambio' : ' cambios') + ':</b><br>' +
     rech.slice(-3).map(r => esc(r.cuando + ' · ' + r.msg)).join('<br>') + '<br><button class="link" style="color:inherit;padding:6px 0 0;min-height:0" onclick="LS.del(\'pan_rechazados\');refrescarHoja()">Entendido</button></div>';
   // Comidas guardadas
-  h += '<div class="fl" id="aj-guardadas">Mis comidas guardadas</div><div class="list">' + guardadasOrdenadas().map(g =>
+  h += '<div class="fl" id="aj-guardadas">Platillos para el plan</div><div class="hint" style="margin:-4px 2px 8px">Lo que comes lo registras en Gym; estos solo sirven para armar tu plan semanal (además de lo que más comes).</div><div class="list">' + guardadasOrdenadas().map(g =>
     '<button class="it" data-id="' + esc(g.id) + '" onclick="abrirEditorGuardada(this.dataset.id)"><div class="ic">' + esc(g.ico || '🍽️') + '</div><div class="tx"><div class="d1">' + esc(g.nombre) + (g.fav ? ' ⭐' : '') + '</div>' +
     '<div class="d2">' + esc(NOMBRE_COMIDA[g.comida] || '') + ' · ' + macrosTexto(g) + '</div></div><span class="muted">' + SVG.lapiz.replace('<svg', '<svg width="18" height="18"') + '</span></button>').join('') +
-    '<button class="it" onclick="abrirEditorGuardada()"><div class="ic">＋</div><div class="tx"><div class="d1">Nueva comida guardada</div></div></button></div>';
+    '<button class="it" onclick="abrirEditorGuardada()"><div class="ic">＋</div><div class="tx"><div class="d1">Nuevo platillo</div></div></button></div>';
   // Datos
   const n = cola().length;
   h += '<div class="fl">Tus datos</div><div class="card flat" style="margin:0">' +
-    '<div class="muted">' + DB.registro.length + ' comidas registradas en este celular · ' + (n ? n + (n === 1 ? ' cambio' : ' cambios') + (conectada('com') ? ' sin subir' : ' esperando a que conectes la hoja') : 'todo subido') + '.</div>' +
+    '<div class="muted">Plan, metas y platillos: ' + (n ? n + (n === 1 ? ' cambio' : ' cambios') + (conectada('com') ? ' sin subir' : ' esperando a que conectes la hoja Comidas 2026') : 'todo subido') + '.' +
+    (DB.registro.length ? ' Además tienes ' + DB.registro.length + ' comidas que registraste en Panel antes de pasar todo a Gym: se siguen sumando.' : '') + '</div>' +
     '<div class="btns" style="margin-top:10px">' + (conectada('com') ? '<button class="btn sm ghost" onclick="sincronizar(true)">Subir ahora</button>' : '') +
     '<button class="btn sm ghost" onclick="exportar()">Exportar respaldo</button></div></div>';
   h += '<div class="hint" style="text-align:center;margin:18px 0 6px">Panel ' + VERSION_APP + ' · Gym, Finanzas y Comidas en un vistazo</div>';
@@ -449,6 +454,7 @@ async function probarConexion(f) {
   } else {
     DATOS[f] = { d: (LS.get('pan_' + f, null) || {}).d || null, ts: 0, ejemplo: false, error: null };
     await actualizarFuente(f, true);
+    if (f === 'gym') { COMGYM_ERROR = null; await leerComidasGym(); }    // lo que comes y tus metas, también desde Gym
     if (!DATOS[f].error) toast(FUENTES[f].nombre + ' conectada ✓');
   }
   refrescarHoja();
@@ -481,7 +487,8 @@ function guardarMetasForm() {
   const m = leerMetasForm();
   if (m.kcal < 800 || m.kcal > 6000) return toast('Las calorías deben estar entre 800 y 6,000');
   cambiar('guardarMetas', [m], 'metas');
-  toast('Metas guardadas ✓'); vibrar(); refrescarHoja();
+  metasAGym(m).then(ok => toast(ok ? 'Metas guardadas ✓ (también en Gym)' : 'Metas guardadas ✓'));
+  vibrar(); refrescarHoja();
 }
 function exportar() {
   const blob = new Blob([JSON.stringify({ app: 'Panel', version: VERSION_APP, fecha: new Date().toISOString(), comidas: DB, sinSubir: cola() }, null, 1)], { type: 'application/json' });
@@ -503,7 +510,7 @@ function arrancar() {
   if (p.toString() || location.hash) history.replaceState(null, '', location.pathname);
   ponerGuardia();
   pintar();
-  if (accion === 'comida') setTimeout(() => abrirAgregar(), 300);
+  if (accion === 'comida') setTimeout(() => abrirGymComida(), 300);
   actualizarHoy(); sincronizar();
   if ('serviceWorker' in navigator) {
     const tenia = !!navigator.serviceWorker.controller;

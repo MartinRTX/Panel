@@ -1,8 +1,8 @@
 // Prueba la app en un Chromium del tamaño de un Pixel, sin tocar Google: las URL de Apps Script se contestan aquí mismo
 // (Gym y Finanzas con los datos de ejemplo; Comidas con apps-script/Comidas.gs corriendo sobre una hoja de mentira).
 //   node herramientas/probar.js [carpeta-para-capturas]
-// Revisa: que no haya errores en la consola, Hoy, Comidas (un toque, mamá, a mano, plan, resumen), metas, conexión,
-// que lo registrado sin conexión se suba al conectar, y que la app abra sin señal.
+// Revisa: que no haya errores en la consola, Hoy, Comidas (lo de Gym, plan, resumen), metas (y que lleguen a Gym), conexión,
+// que el plan y las metas guardados sin conexión se suban al conectar, que la app abra sin señal y los avisos de URL.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -34,13 +34,27 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   const pagina = await ctx.newPage();
   pagina.on('console', m => { if (m.type() === 'error') errores.push(m.text()); });
   pagina.on('pageerror', e => errores.push(String(e)));
-  // Apps Script de mentira
-  let llamadasCom = 0;
+  // Apps Script de mentira. Gym: lo de ejemplo más una pestaña Comidas con 7 días (en la fecha de Hermosillo, como el celular)
+  const hoyH = CALC.claveDia(new Date(Date.now() - 7 * 3600e3));
+  const it = (h, m, n, p, c, f, k, id) => ({ h, m, n, q: 1, u: '', p, c, f, k, fib: 2, src: 'receta', ref: '', id });
+  const gymComidas = {};
+  for (let i = 0; i < 7; i++) {
+    const f = CALC.sumarDias(hoyH, -i);
+    gymComidas[f] = [it('07:30', 'd', 'Mi licuado', 40, 60, 10, 490, 'l' + i), it('14:10', 'c', 'Tupper: pollo, arroz y frijoles', 45, 80, 26, 750, 't' + i)]
+      .concat(i ? [it('20:30', 'n', '2 quesadillas de harina', 23, 55, 21, 491, 'q' + i)] : []);
+  }
+  let gymMetas = { p: 120, kcal: null, c: null, g: null }, conPanelGs = true, llamadasCom = 0;
   const contestar = async ruta => {
     const u = ruta.request().url(), cuerpo = JSON.parse(ruta.request().postData() || '{}');
     let r;
-    if (/GYMTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: EJEMPLO.gym(CALC.claveDia(new Date())) } : { ok: false, error: 'Clave incorrecta' };
-    else if (/FINTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: Object.assign(EJEMPLO.finanzas(CALC.claveDia(new Date())), { historial: [{ fecha: '2025-07-01', tipo: 'Gasto', monto: 1, categoria: 'X' }] }) } : { ok: false, error: 'Clave incorrecta' };
+    if (/GYMTEST/.test(u)) {
+      if (cuerpo.k !== 'secreta') r = { ok: false, error: 'Clave incorrecta' };
+      else if (cuerpo.action === 'data') r = { ok: true, result: Object.assign(EJEMPLO.gym(hoyH), { comidasDias: { [hoyH]: gymComidas[hoyH] }, metaProteina: gymMetas.p }) };
+      else if (!conPanelGs || !/^(comidasPanel|metasPanel)$/.test(cuerpo.action)) r = { ok: false, error: 'Acción desconocida' };
+      else if (cuerpo.action === 'comidasPanel') r = { ok: true, result: { dias: gymComidas, desde: CALC.sumarDias(hoyH, -41), hoy: hoyH, metas: gymMetas, version: 1 } };
+      else { const m = cuerpo.args[0]; if (m) gymMetas = { p: m.p, kcal: m.kcal, c: m.c, g: m.g }; r = { ok: true, result: gymMetas }; }
+    }
+    else if (/FINTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: Object.assign(EJEMPLO.finanzas(hoyH), { historial: [{ fecha: '2025-07-01', tipo: 'Gasto', monto: 1, categoria: 'X' }] }) } : { ok: false, error: 'Clave incorrecta' };
     else { llamadasCom++; r = hoja.post(cuerpo); }
     await ruta.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
   };
@@ -62,50 +76,21 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await pagina.emulateMedia({ colorScheme: 'light' });
   await foto('2-hoy-claro');
 
-  // 2. Comidas: un toque, comida de mamá, a mano
+  // 2. Comidas sin Gym conectado: pide conectarlo; el + abre la app Gym
   await pagina.click('#tComidas');
   await pagina.waitForSelector('.anillo');
-  await pagina.locator('.comida-acc button.una', { hasText: 'Licuado' }).first().click();
-  await pagina.waitForTimeout(200);
-  ok(/371/.test(await pagina.locator('.anillo').innerText()), 'el licuado de un toque suma 371 kcal');
-  await pagina.locator('.comida-acc button.una', { hasText: 'Comida de mamá' }).click();
-  await pagina.waitForSelector('.sheet.show');
-  await pagina.locator('.sheet .pick button', { hasText: 'Res' }).click();
-  await pagina.locator('.sheet button.switch').click();
-  await pagina.fill('.sheet input[placeholder^="Nombre"]', 'Bistec en salsa de mamá');
-  await foto('3-casera');
-  await pagina.locator('.sheet .actbar .btn').click();
-  await pagina.waitForTimeout(400);
-  ok(/Bistec en salsa de mamá/.test(await texto()), 'comida de mamá registrada y guardada como favorita');
-  await pagina.click('nav .fab');
-  await pagina.waitForSelector('.sheet.show');
-  await pagina.locator('.sheet .pick button', { hasText: 'Snacks' }).click();
-  await pagina.locator('.sheet .seg button', { hasText: 'A mano' }).click();
-  await pagina.locator('.sheet .quick button', { hasText: 'Yogurt griego' }).click();
-  await pagina.locator('.sheet .actbar .btn').click();
-  await pagina.waitForTimeout(400);
-  t = await texto();
-  ok(/Yogurt griego/.test(t), 'snack a mano con relleno rápido');
-  await foto('4-comidas-dia');
-  // Editar porción
-  await pagina.locator('.it button.tx', { hasText: 'Yogurt griego' }).click();
-  await pagina.locator('.sheet .pick button', { hasText: '×2' }).click();
-  await pagina.locator('.sheet .actbar .btn:not(.danger)').click();
-  await pagina.waitForTimeout(300);
-  ok(/Yogurt griego ×2/.test(await texto()), 'editar porción ×2');
+  ok(/se registra en tu app Gym/.test(await texto()), 'sin Gym: explica que lo que comes se registra en Gym');
+  const [pedido] = await Promise.all([ctx.waitForEvent('request', { predicate: r => /martinrtx\.github\.io\/Gym/.test(r.url()), timeout: 5000 }).catch(() => null), pagina.click('nav .fab')]);
+  ok(!!pedido, 'el + abre la app Gym');
+  for (const pg of ctx.pages()) if (pg !== pagina) await pg.close();
 
-  // 3. Plan semanal y resumen
+  // 3. Plan semanal (sin Gym: tus platillos y la comida de mamá) y resumen
   await pagina.locator('.seg button', { hasText: 'Plan semanal' }).click();
   await pagina.locator('button', { hasText: 'Llenar con lo de siempre' }).click();
   await pagina.waitForTimeout(300);
   ok((await pagina.locator('.slot .n:not(.vacio)').count()) === 21, 'llenar la semana: 7 desayunos, 7 comidas y 7 cenas');
-  await foto('5-plan');
   await pagina.locator('.seg button', { hasText: 'Resumen' }).click();
-  await pagina.waitForTimeout(200);
-  ok(/Promedio de calorías|Hoy llevas/.test(await texto()), 'resumen semanal');
-  await foto('6-resumen');
-  await pagina.locator('.seg button', { hasText: 'Día' }).click();
-  ok(await pagina.locator('.quick button', { hasText: 'quesadillas' }).count() >= 1, 'el plan de hoy aparece para registrarlo de un toque');
+  ok(/Conecta Gym/.test(await texto()), 'resumen sin Gym: pide conectarlo');
 
   // 4. Ajustes: tema oscuro, metas, conexión
   await pagina.click('.appbar .iconbtn');
@@ -115,51 +100,59 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await pagina.locator('.sheet button', { hasText: 'Repartir el resto' }).click();
   ok(await pagina.inputValue('#m-c') !== '291', 'repartir recalcula carbs');
   await pagina.locator('.sheet button', { hasText: 'Guardar metas' }).click();
+  await pagina.waitForTimeout(300);
   await foto('7-ajustes');
-  const pendientes = await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length);
-  ok(pendientes > 0, 'sin conexión, los cambios esperan en el celular (' + pendientes + ')');
-  // Conectar las tres
+  ok(await pagina.evaluate(() => !!JSON.parse(localStorage.getItem('pan_metas_gym'))), 'sin Gym conectado, las metas esperan para mandarse a Gym');
   for (const [f, u] of [['gym', 'GYMTEST'], ['fin', 'FINTEST'], ['com', 'COMTEST']]) {
     await pagina.fill('#u-' + f, 'https://script.google.com/macros/s/' + u + '/exec');
     await pagina.fill('#k-' + f, 'secreta');
     await pagina.locator('#u-' + f + ' ~ .btns .btn:not(.ghost)').click();
     await pagina.waitForTimeout(700);
   }
-  await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
-  ok(await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al conectar Comidas se sube todo lo pendiente');
+  await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0 && !localStorage.getItem('pan_metas_gym'), null, { timeout: 15000 }).catch(() => {});
+  ok(await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al conectar Comidas se sube el plan y las metas');
   const d = hoja.post({ k: 'secreta', action: 'data', args: [30] }).result;
-  ok(d.registro.length === 3 && d.guardadas.length === 3 && d.plan.length === 21 && d.metas && d.metas.kcal === 2400,
-    'la hoja quedó con 3 registros, 3 guardadas (licuado, quesadillas y la de mamá), 21 del plan y metas de 2400 (' + [d.registro.length, d.guardadas.length, d.plan.length, d.metas && d.metas.kcal].join(', ') + ')');
-  ok(d.registro.some(r => r.nombre === 'Yogurt griego' && r.porcion === 2), 'la edición de porción llegó a la hoja');
+  ok(d.plan.length === 21 && d.metas && d.metas.kcal === 2400, 'la hoja Comidas 2026 tiene el plan y las metas (' + [d.plan.length, d.metas && d.metas.kcal].join(', ') + ')');
+  ok(gymMetas.kcal === 2400 && gymMetas.p === 140, 'Gym recibió las metas de Panel (' + JSON.stringify(gymMetas) + ')');
   await pagina.click('.sheet .grab .x');
+
+  // 5. Con Gym conectado: Hoy y Comidas muestran lo registrado en Gym
   await pagina.click('#tHoy');
-  await pagina.waitForTimeout(500);
+  await pagina.waitForTimeout(800);
   t = await texto();
   ok(!/datos de ejemplo/.test(t) && /Patrimonio neto/.test(t), 'conectadas: Hoy ya no dice "ejemplo"');
+  ok(/Comida de hoy/.test(t) && /1,240/.test(t), 'Hoy muestra la comida de hoy de Gym (1,240 kcal)');
   ok((await pagina.locator('#sync').innerText()).includes('Al día'), 'la pastilla dice "Al día"');
   await foto('8-hoy-conectado');
-
-  // 5. Otro celular registró algo: al volver a abrir, se baja
-  const hoyNav = await pagina.evaluate(() => hoy());     // la fecha del celular (su zona horaria)
-  hoja.post({ k: 'secreta', action: 'batch', args: [[{ id: 'x', action: 'guardarRegistro', args: [{ id: 'otro1', fecha: hoyNav, comida: 'snack', nombre: 'Manzana', kcal: 94, p: 0.5, c: 25, g: 0.4 }] }]] });
-  await pagina.reload();
   await pagina.click('#tComidas');
-  await pagina.waitForTimeout(1200);
-  ok(/Manzana/.test(await texto()), 'lo registrado en la hoja desde otro lado aparece');
+  await pagina.locator('.seg button', { hasText: 'Día' }).click();
+  await pagina.waitForTimeout(300);
+  t = await texto();
+  ok(/Mi licuado/.test(t) && /Tupper: pollo/.test(t) && /1,240/.test(t), 'Día: lo registrado en Gym con sus kcal');
+  ok(/Tu plan de hoy/i.test(t), 'Día: el plan de hoy con lo que ya comiste');
+  await foto('4-comidas-dia');
+  await pagina.click('.daynav .arrow >> nth=0');
+  ok(/quesadillas de harina/.test(await texto()), 'ayer: la cena registrada en Gym');
+  await pagina.locator('.seg button', { hasText: 'Plan semanal' }).click();
+  await pagina.locator('.slot').nth(4).click();     // martes, desayuno
+  ok(/Lo que más comes/i.test(await pagina.locator('.sheet').innerText()), 'el plan ofrece lo que más comes en Gym');
+  await pagina.locator('.sheet .it', { hasText: 'Mi licuado' }).click();
+  await pagina.waitForTimeout(200);
+  ok(/Mi licuado/.test(await texto()), 'elegir del plan algo que comes en Gym');
+  await foto('5-plan');
+  await pagina.locator('.seg button', { hasText: 'Resumen' }).click();
+  await pagina.waitForTimeout(200);
+  t = await texto();
+  ok(/Promedio de calorías/.test(t) || /Los promedios cuentan los días completos/.test(t), 'resumen semanal con lo de Gym');
+  await foto('6-resumen');
 
   // 6. Sin señal: la app abre con lo guardado
   await ctx.setOffline(true);
   await pagina.reload();
-  await pagina.waitForSelector('.anillo', { timeout: 8000 }).catch(() => {});
-  ok(await pagina.locator('.anillo').count() === 1, 'abre sin señal (service worker)');
-  await pagina.locator('.comida-acc button', { hasText: '+ Agregar' }).first().click();
-  await pagina.locator('.sheet .it button.tx').first().click();
-  await pagina.waitForTimeout(300);
-  ok((await pagina.locator('#sync').innerText()).includes('sin subir'), 'sin señal: el cambio queda pendiente');
+  await pagina.waitForSelector('#view .seg', { timeout: 8000 }).catch(() => {});
+  await pagina.locator('.seg button', { hasText: 'Día' }).click().catch(() => {});
+  ok(await pagina.locator('.anillo').count() === 1 && /Mi licuado/.test(await texto()), 'abre sin señal con lo último de Gym');
   await ctx.setOffline(false);
-  await pagina.evaluate(() => window.dispatchEvent(new Event('online')));
-  await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
-  ok(await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al volver la señal se sube');
 
   // 7. URL equivocada (la de Gym pegada en Comidas, como en config.js con dos URL iguales): se avisa y no se pierde nada
   // Otro celular en limpio (otro contexto: nada guardado), con la URL de Gym también en Comidas
@@ -173,7 +166,8 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await p2.goto(base);
   await p2.waitForSelector('.hero.gym');
   await p2.click('#tComidas');
-  await p2.locator('.comida-acc button.una', { hasText: 'Licuado' }).first().click();
+  await p2.locator('.seg button', { hasText: 'Plan semanal' }).click();
+  await p2.locator('button', { hasText: 'Llenar con lo de siempre' }).click();
   await p2.waitForTimeout(2500);
   ok((await p2.locator('#sync').innerText()).includes('Revisa Comidas'), 'Comidas con la URL de Gym: la pastilla avisa');
   ok(await p2.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) > 0 && llamadasCom === antes, 'no se manda nada al script equivocado y la cola se conserva');
@@ -186,6 +180,21 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await p2.locator('#u-com ~ .btns .btn:not(.ghost)').click();
   await p2.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
   ok(await p2.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al corregir la URL se sube lo pendiente');
+
+  // 8. Script de Gym sin Panel.gs: solo hoy y ayer (lo que ya manda la app Gym) y un aviso
+  conPanelGs = false;
+  const ctx3 = await navegador.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block' });
+  await ctx3.route('https://script.google.com/**', ruta => ctx.__ruta(ruta));
+  await ctx3.addInitScript(() => { if (!localStorage.getItem('pan_conexion')) localStorage.setItem('pan_conexion', JSON.stringify({
+    gym: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' } })); });
+  const p3 = await ctx3.newPage();
+  p3.on('pageerror', e => errores.push(String(e)));
+  await p3.goto(base);
+  await p3.waitForSelector('.hero.gym');
+  await p3.click('#tComidas');
+  await p3.waitForTimeout(1500);
+  const t3 = await p3.locator('#view').innerText();
+  ok(/Panel\.gs/.test(t3) && /Mi licuado/.test(t3), 'sin Panel.gs: muestra hoy (de la app Gym) y avisa qué agregar');
 
   ok(!errores.length, 'sin errores en la consola' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await navegador.close();

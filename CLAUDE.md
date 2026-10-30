@@ -4,14 +4,19 @@ Tablero de Martin: PWA en GitHub Pages (`main` → https://martinrtx.github.io/P
 Martin la usa como **APK** (Capacitor, carpeta `apk/`): un cascarón que carga esa misma página. El workflow "APK Android"
 la compila y la publica en Releases (tag `apk`, `Panel.apk`) desde `main`; se firma con los secretos `KEYSTORE_B64` / `KEYSTORE_PASS`.
 El plugin nativo `Panel.abrirApp` abre las APK de Gym (`com.martinrtx.gym`) y Finanzas (`com.martinrtx.finanzas`).
-Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (registro, metas, guardadas, plan semanal y resumen).
+Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (lo que registras en Gym contra tus metas, plan semanal y resumen).
 
 ## Cómo se conecta
 
 - Hoy lee los MISMOS Apps Script de Gym y Finanzas con la acción `data` (POST text/plain, clave en el cuerpo).
   No escribe nada en esas hojas. Si su respuesta cambia, ajustar `CALC.gymHoy` / `CALC.finanzasHoy` en `calculos.js`
   (se basan en `app.js` de Gym: `grupoDeHoy`, `datosWidgets`; y de Finanzas: `saldo`, `saldoPersona`, `resumenMes`).
-- Comidas usa su propio script: `apps-script/Comidas.gs` (hoja "Comidas 2026"). Martin lo pega a mano en su Apps Script.
+- **Lo que come se registra SOLO en la app Gym** (Martin lo decidió: Gym tiene buscador, cámara, recetas y tupper).
+  Panel lo lee con la acción `comidasPanel` de `apps-script/Panel-Gym.gs` (archivo extra en el Apps Script de Gym, ver GYM-PANEL.md);
+  sin ella usa `comidasDias` (hoy y ayer) de `data`. **Las metas viven en Panel** y se mandan a Gym con `metasPanel`
+  (proteína = `metaProteina` de Gym; kcal/carbs/grasa en `CFG.metasPanel`). Panel no escribe registros en Gym.
+- Plan semanal, platillos para planear y metas: script propio `apps-script/Comidas.gs` (hoja "Comidas 2026").
+  Lo registrado en Panel antes del cambio (pestaña Registro) se sigue sumando como "de Panel". Martin pega los .gs a mano.
   **En el repo la clave siempre es `PON_AQUI_TU_CLAVE`** (el repo es público). Si cambia, decirle qué pasos repetir.
 - Las URL /exec van en `config.js` (o en Ajustes de la app). Las claves solo en el celular (`pan_conexion`).
 - Comidas es "primero el celular": `pan_db` + cola `pan_cola` (operaciones por ID, idempotentes) que se sube en lotes.

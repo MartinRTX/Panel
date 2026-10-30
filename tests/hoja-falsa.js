@@ -83,4 +83,4 @@ function cargarScript(clave) {
   return { lb, post, get, instalar: api.instalar };
 }
 
-module.exports = { cargarScript, aClave };
+module.exports = { cargarScript, aClave, libroNuevo, hojaNueva };
