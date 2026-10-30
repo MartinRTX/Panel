@@ -43,16 +43,17 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
     gymComidas[f] = [it('07:30', 'd', 'Mi licuado', 40, 60, 10, 490, 'l' + i), it('14:10', 'c', 'Tupper: pollo, arroz y frijoles', 45, 80, 26, 750, 't' + i)]
       .concat(i ? [it('20:30', 'n', '2 quesadillas de harina', 23, 55, 21, 491, 'q' + i)] : []);
   }
-  let gymMetas = { p: 120, kcal: null, c: null, g: null }, conPanelGs = true, llamadasCom = 0;
+  // Las metas que calcula la app Gym (script 8.1): Panel solo las muestra
+  const gymMetas = { p: 120, kcal: 1850, c: 200, g: 59, fib: 25, auto: true, mant: 2300, porque: 'vas lento (0 %/sem)', deGym: true };
+  let conPanelGs = true, llamadasCom = 0;
   const contestar = async ruta => {
     const u = ruta.request().url(), cuerpo = JSON.parse(ruta.request().postData() || '{}');
     let r;
     if (/GYMTEST/.test(u)) {
       if (cuerpo.k !== 'secreta') r = { ok: false, error: 'Clave incorrecta' };
       else if (cuerpo.action === 'data') r = { ok: true, result: Object.assign(EJEMPLO.gym(hoyH), { comidasDias: { [hoyH]: gymComidas[hoyH] }, metaProteina: gymMetas.p }) };
-      else if (!conPanelGs || !/^(comidasPanel|metasPanel)$/.test(cuerpo.action)) r = { ok: false, error: 'Acción desconocida' };
-      else if (cuerpo.action === 'comidasPanel') r = { ok: true, result: { dias: gymComidas, desde: CALC.sumarDias(hoyH, -41), hoy: hoyH, metas: gymMetas, version: 1 } };
-      else { const m = cuerpo.args[0]; if (m) gymMetas = { p: m.p, kcal: m.kcal, c: m.c, g: m.g }; r = { ok: true, result: gymMetas }; }
+      else if (!conPanelGs || cuerpo.action !== 'comidasPanel') r = { ok: false, error: 'Acción desconocida' };
+      else r = { ok: true, result: { dias: gymComidas, desde: CALC.sumarDias(hoyH, -41), hoy: hoyH, metas: gymMetas, version: 1 } };
     }
     else if (/FINTEST/.test(u)) r = cuerpo.k === 'secreta' ? { ok: true, result: Object.assign(EJEMPLO.finanzas(hoyH), { historial: [{ fecha: '2025-07-01', tipo: 'Gasto', monto: 1, categoria: 'X' }] }) } : { ok: false, error: 'Clave incorrecta' };
     else { llamadasCom++; r = hoja.post(cuerpo); }
@@ -102,18 +103,23 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await pagina.locator('.sheet button', { hasText: 'Guardar metas' }).click();
   await pagina.waitForTimeout(300);
   await foto('7-ajustes');
-  ok(await pagina.evaluate(() => !!JSON.parse(localStorage.getItem('pan_metas_gym'))), 'sin Gym conectado, las metas esperan para mandarse a Gym');
   for (const [f, u] of [['gym', 'GYMTEST'], ['fin', 'FINTEST'], ['com', 'COMTEST']]) {
     await pagina.fill('#u-' + f, 'https://script.google.com/macros/s/' + u + '/exec');
     await pagina.fill('#k-' + f, 'secreta');
     await pagina.locator('#u-' + f + ' ~ .btns .btn:not(.ghost)').click();
     await pagina.waitForTimeout(700);
   }
-  await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0 && !localStorage.getItem('pan_metas_gym'), null, { timeout: 15000 }).catch(() => {});
+  await pagina.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
   ok(await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al conectar Comidas se sube el plan y las metas');
   const d = hoja.post({ k: 'secreta', action: 'data', args: [30] }).result;
   ok(d.plan.length === 21 && d.metas && d.metas.kcal === 2400, 'la hoja Comidas 2026 tiene el plan y las metas (' + [d.plan.length, d.metas && d.metas.kcal].join(', ') + ')');
-  ok(gymMetas.kcal === 2400 && gymMetas.p === 140, 'Gym recibió las metas de Panel (' + JSON.stringify(gymMetas) + ')');
+  await pagina.click('.sheet .grab .x');
+  // Con Gym conectado, las metas son las que calcula Gym (Panel ya no las edita ni se las manda)
+  await pagina.waitForFunction(() => metas().deGym, null, { timeout: 8000 }).catch(() => {});
+  ok(await pagina.evaluate(() => metas().kcal === 1850 && metas().p === 120), 'las metas son las de Gym (1,850 kcal y 120 g)');
+  await pagina.click('.appbar .iconbtn'); await pagina.waitForSelector('.sheet.show');
+  const aj = await pagina.locator('.sheet').innerText();
+  ok(/Las calcula tu app Gym/.test(aj) && /1,850 kcal/.test(aj) && !(await pagina.locator('#m-kcal').count()), 'Ajustes muestra las metas de Gym sin editarlas aquí');
   await pagina.click('.sheet .grab .x');
 
   // 5. Con Gym conectado: Hoy y Comidas muestran lo registrado en Gym

@@ -16,7 +16,7 @@ const compilar = (codigo, nombre) => {
 
 const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
 const scripts = [...html.matchAll(/<script[^>]*\bsrc="([^"]+)"/g)].map(m => m[1].replace(/^\.\//, '').split('?')[0]).filter(f => !/^https?:/.test(f));
-const archivos = [...new Set(scripts.concat(['sw.js', 'apps-script/Comidas.gs', 'apps-script/Panel-Gym.gs']))];
+const archivos = [...new Set(scripts.concat(['sw.js', 'apps-script/Comidas.gs']))];
 archivos.forEach(f => compilar(fs.readFileSync(path.join(RAIZ, f), 'utf8'), f));
 compilar(scripts.map(f => fs.readFileSync(path.join(RAIZ, f), 'utf8')).join('\n;\n'), scripts.join(' + ') + ' (juntos, como en index.html)');
 

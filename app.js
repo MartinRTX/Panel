@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.3';
+const VERSION_APP = '1.4';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -386,19 +386,21 @@ function abrirAjustes(seccion) {
   if (seccion) setTimeout(() => { const el = $('aj-' + seccion); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 120);
 }
 function hojaAjustes() {
-  const tema = LS.get('pan_tema', 'auto'), m = metas(), rech = LS.get('pan_rechazados', []), metasPend = LS.get('pan_metas_gym', null);
+  const tema = LS.get('pan_tema', 'auto'), m = metas(), rech = LS.get('pan_rechazados', []);
   let h = cabeza('Ajustes');
   h += '<div class="fl">Tema</div><div class="seg">' + [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']]
     .map(([k, t]) => '<button class="' + (tema === k ? 'on' : '') + '" onclick="elegirTema(\'' + k + '\')">' + t + '</button>').join('') + '</div>';
-  // Metas de comida
-  h += '<div class="fl" id="aj-metas">Metas de comida por día</div><div class="g4">' +
+  // Metas de comida: las calcula Gym; mientras no lleguen, las de Panel
+  h += '<div class="fl" id="aj-metas">Metas de comida por día</div>';
+  if (m.deGym) h += '<div class="note"><b>' + fmt0(m.kcal) + ' kcal</b> · Proteína ' + Math.round(m.p) + ' g · Carbs ' + Math.round(m.c) + ' g · Grasa ' + Math.round(m.g) + ' g</div>' +
+    '<div class="hint">' + (m.auto ? 'Las calcula tu app Gym con tu peso, tus días de gym y tus km' + (m.mant ? ' (mantenimiento ~' + fmt0(m.mant) + ' kcal' + (m.porque ? '; ' + esc(m.porque) : '') + ')' : '') +
+      ' y se ajustan solas cada semana.' : 'Son las que pusiste en tu app Gym.') + ' Para cambiarlas: Gym › Comida › toca las barras de calorías.</div>';
+  else h += '<div class="g4">' +
     [['kcal', 'kcal'], ['p', 'Proteína g'], ['c', 'Carbs g'], ['g', 'Grasa g']].map(([k, t]) =>
       '<div><label for="m-' + k + '">' + t + '</label><input class="inp" id="m-' + k + '" type="number" inputmode="numeric" min="0" value="' + Math.round(m[k]) + '" oninput="sumaMetas()"></div>').join('') + '</div>' +
     '<div class="hint" id="sumaMetas">' + textoSumaMetas(m) + '</div>' +
     '<div class="btns" style="margin-top:10px"><button class="btn sm ghost" onclick="repartir()">Repartir el resto</button><button class="btn sm" onclick="guardarMetasForm()">Guardar metas</button></div>' +
-    '<div class="hint">"Repartir" deja tus kcal y tu proteína, pone la grasa en 25 % de las calorías y los carbohidratos con lo que queda. ' +
-    'Tus metas mandan: la proteína se vuelve tu meta en la app Gym y las demás también se guardan allá.</div>' +
-    (metasPend ? '<div class="hint amber">Gym todavía no tiene estas metas: ' + (conectada('gym') ? 'falta agregar Panel.gs a su script (GYM-PANEL.md).' : 'conecta Gym.') + '</div>' : '');
+    '<div class="hint">Las metas las calcula tu app Gym; en cuanto Panel las lea, se usan esas. Mientras, estas.</div>';
   // Conexión
   const rep = urlsRepetidas();
   h += '<div class="fl" id="aj-conexion">Conexión con tus hojas</div>' +
@@ -487,7 +489,7 @@ function guardarMetasForm() {
   const m = leerMetasForm();
   if (m.kcal < 800 || m.kcal > 6000) return toast('Las calorías deben estar entre 800 y 6,000');
   cambiar('guardarMetas', [m], 'metas');
-  metasAGym(m).then(ok => toast(ok ? 'Metas guardadas ✓ (también en Gym)' : 'Metas guardadas ✓'));
+  toast('Metas guardadas ✓');
   vibrar(); refrescarHoja();
 }
 function exportar() {

@@ -22,7 +22,14 @@ function iniciarComidas() {
   if (q.some(x => x.enviado)) LS.set('pan_cola', q.map(x => Object.assign(x, { enviado: false })));
 }
 function guardarDB() { if (!LS.set('pan_db', DB)) toast('Tu celular no tiene espacio: exporta un respaldo en Ajustes'); }
-function metas() { const m = DB && DB.metas; return m && m.kcal ? m : Object.assign({}, CONFIG.METAS); }
+// Metas: las calcula la app Gym (con tu peso, tus días de gym, tus km y cómo vas bajando) y Panel solo las muestra.
+// Mientras Gym no las mande (script de Gym 8.1+), se usan las de Panel.
+function metasDeGym() { const g = typeof COMGYM !== 'undefined' && COMGYM && COMGYM.metasGym; return g && g.deGym && g.kcal ? g : null; }
+function metas() {
+  const g = metasDeGym();
+  if (g) return { kcal: g.kcal, p: g.p, c: g.c, g: g.g, deGym: true, auto: g.auto, mant: g.mant, porque: g.porque || '' };
+  const m = DB && DB.metas; return m && m.kcal ? m : Object.assign({}, CONFIG.METAS);
+}
 const r0 = n => Math.round(Number(n) || 0);
 const macrosTexto = x => fmt0(x.kcal) + ' kcal · P ' + r0(x.p) + ' · C ' + r0(x.c) + ' · G ' + r0(x.g);
 const macrosHtml = x => '<span class="mac">' + fmt0(x.kcal) + ' kcal · <i class="p">P ' + r0(x.p) + '</i> · <i class="c">C ' + r0(x.c) + '</i> · <i class="g">G ' + r0(x.g) + '</i></span>';
@@ -164,8 +171,8 @@ async function sincronizar(avisar) {
 }
 
 /* ===================== Lo que comes: lo registras en tu app Gym ===================== */
-// Panel lee la pestaña "Comidas" de tu hoja de Gym (acción comidasPanel de Panel.gs) y solo la muestra.
-// Sin Panel.gs en el script de Gym, usa lo que ya manda la app Gym (hoy y ayer).
+// Panel lee la pestaña "Comidas" de tu hoja de Gym (acción comidasPanel del script de Gym 8.1, repo Gym-script) y solo la muestra.
+// Con un script de Gym más viejo, usa lo que ya manda la app Gym (hoy y ayer).
 // Lo que registraste en Panel antes de este cambio (DB.registro) se sigue sumando, marcado como "de Panel".
 const DIAS_GYM = 42;
 let COMGYM = LS.get('pan_comgym', null);     // { dias: { fecha: [items] }, ts, metasGym }
@@ -178,7 +185,6 @@ async function leerComidasGym(avisar) {
     if (!d || typeof d.dias !== 'object') throw new Error('Esa URL no es la de tu script de Gym');
     COMGYM = { dias: d.dias, ts: Date.now(), metasGym: d.metas || null };
     LS.set('pan_comgym', COMGYM); COMGYM_ERROR = null; REG_CACHE = null;
-    revisarMetasGym();
   } catch (e) {
     COMGYM_ERROR = /Acción desconocida/.test(e.message) ? 'sin-panel-gs' : mensajeError(e);
     if (avisar && COMGYM_ERROR !== 'sin-panel-gs') toast('Comidas de Gym: ' + COMGYM_ERROR);
@@ -187,7 +193,7 @@ async function leerComidasGym(avisar) {
     if (!HOJA_FN) pintar();
   }
 }
-// Días de Gym: lo de Panel.gs y, encima, lo que la app Gym mandó más reciente para hoy y ayer
+// Días de Gym: lo de comidasPanel y, encima, lo que la app Gym mandó más reciente para hoy y ayer
 function diasGym() {
   const dias = Object.assign({}, COMGYM && COMGYM.dias);
   const g = DATOS.gym;
@@ -222,27 +228,8 @@ function macrosForm(x) {
   return { kcal: Math.round(k !== null && x.kcal !== '' ? k : p * 4 + c * 4 + g * 9), p: r1(p), c: r1(c), g: r1(g) };
 }
 
-/* ----- Metas: viven en Panel y se le mandan a Gym (proteína = tu meta de Gym; kcal, carbs y grasa guardadas allá) ----- */
-function metasAGym(m) {
-  if (m) LS.set('pan_metas_gym', m);
-  const pend = LS.get('pan_metas_gym', null);
-  if (!pend || !conectada('gym')) return Promise.resolve(false);
-  return llamar('gym', { action: 'metasPanel', args: [pend] }).then(r => {
-    LS.del('pan_metas_gym');
-    if (COMGYM) { COMGYM.metasGym = r; LS.set('pan_comgym', COMGYM); }
-    return true;
-  }).catch(e => {
-    if (!/Acción desconocida/.test(e.message)) toast('Gym no recibió tus metas: ' + mensajeError(e));
-    return false;
-  });
-}
-// Si en Gym quedaron otras (las cambiaste allá o es la primera vez), se le mandan las de Panel
-function revisarMetasGym() {
-  const g = COMGYM && COMGYM.metasGym, m = metas();
-  if (!g || LS.get('pan_metas_gym', null)) return metasAGym();
-  if (Math.round(g.p) !== Math.round(m.p) || Math.round(g.kcal || 0) !== Math.round(m.kcal) || Math.round(g.c || 0) !== Math.round(m.c) || Math.round(g.g || 0) !== Math.round(m.g))
-    return metasAGym({ kcal: m.kcal, p: m.p, c: m.c, g: m.g });
-}
+// Antes (1.3) Panel le mandaba sus metas a Gym; ya no: lo que quedó pendiente de mandar se descarta
+LS.del('pan_metas_gym');
 
 /* ===================== Pantalla Comidas ===================== */
 function pintarComidas() {
@@ -251,7 +238,7 @@ function pintarComidas() {
   if (!hayGym()) h += '<div class="note info">Lo que comes se registra en tu app <b>Gym</b> y aquí lo ves con tus metas, tu plan y tu resumen. ' +
     'Para eso conecta Gym (engrane › Conexión).</div>';
   else if (COMGYM_ERROR === 'sin-panel-gs' && !LS.get('pan_aviso_panelgs', false)) h += '<div class="note">Solo veo hoy y ayer de tu app Gym. Para ver tus semanas completas, ' +
-    'agrega <b>Panel.gs</b> al script de Gym (instrucciones en GYM-PANEL.md del repo). <button class="link" style="padding:4px 0 0;min-height:0;color:inherit;text-decoration:underline" ' +
+    'tu script de Gym tiene que ser la versión 8.1 o más nueva (se publica solo desde GitHub; no pegues nada a mano). <button class="link" style="padding:4px 0 0;min-height:0;color:inherit;text-decoration:underline" ' +
     'onclick="LS.set(\'pan_aviso_panelgs\',true);pintar()">Entendido</button></div>';
   else if (COMGYM_ERROR && COMGYM_ERROR !== 'sin-panel-gs') h += '<div class="note red">No pude leer tus comidas de Gym: ' + esc(COMGYM_ERROR) + '</div>';
   return h + (SUB === 'semana' ? vistaSemana() : SUB === 'resumen' ? vistaResumen() : vistaDia());

@@ -12,9 +12,10 @@ Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (lo que regi
   No escribe nada en esas hojas. Si su respuesta cambia, ajustar `CALC.gymHoy` / `CALC.finanzasHoy` en `calculos.js`
   (se basan en `app.js` de Gym: `grupoDeHoy`, `datosWidgets`; y de Finanzas: `saldo`, `saldoPersona`, `resumenMes`).
 - **Lo que come se registra SOLO en la app Gym** (Martin lo decidió: Gym tiene buscador, cámara, recetas y tupper).
-  Panel lo lee con la acción `comidasPanel` de `apps-script/Panel-Gym.gs` (archivo extra en el Apps Script de Gym, ver GYM-PANEL.md);
-  sin ella usa `comidasDias` (hoy y ayer) de `data`. **Las metas viven en Panel** y se mandan a Gym con `metasPanel`
-  (proteína = `metaProteina` de Gym; kcal/carbs/grasa en `CFG.metasPanel`). Panel no escribe registros en Gym.
+  Panel lo lee con la acción `comidasPanel` del script de Gym (repo privado MartinRTX/Gym-script, `src/Panel.js`, 8.1+; ver GYM-PANEL.md).
+  Ese script se publica con clasp desde su repo: NUNCA pedirle a Martin que pegue código en el Apps Script de Gym (se borraría).
+  Sin esa acción usa `comidasDias` (hoy y ayer) de `data`. **Las metas las calcula Gym** (opción A, Martin lo eligió) y llegan en
+  `comidasPanel().metas` con `deGym: true`; Panel solo las muestra (Ajustes no las edita mientras existan). Panel no escribe nada en Gym.
 - Plan semanal, platillos para planear y metas: script propio `apps-script/Comidas.gs` (hoja "Comidas 2026").
   Lo registrado en Panel antes del cambio (pestaña Registro) se sigue sumando como "de Panel". Martin pega los .gs a mano.
   **En el repo la clave siempre es `PON_AQUI_TU_CLAVE`** (el repo es público). Si cambia, decirle qué pasos repetir.
