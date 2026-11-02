@@ -44,7 +44,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
       .concat(i ? [it('20:30', 'n', '2 quesadillas de harina', 23, 55, 21, 491, 'q' + i)] : []);
   }
   // Las metas que calcula la app Gym (script 8.1): Panel solo las muestra
-  const gymMetas = { p: 120, kcal: 1850, c: 200, g: 59, fib: 25, auto: true, mant: 2300, porque: 'vas lento (0 %/sem)', deGym: true };
+  const gymMetas = { p: 120, kcal: 1850, c: 200, g: 59, fib: 25, auto: true, mant: 2300, mantReal: 1850, porque: 'vas lento (0 %/sem)', deGym: true };
   let conPanelGs = true, llamadasCom = 0;
   const contestar = async ruta => {
     const u = ruta.request().url(), cuerpo = JSON.parse(ruta.request().postData() || '{}');
@@ -120,6 +120,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await pagina.click('.appbar .iconbtn'); await pagina.waitForSelector('.sheet.show');
   const aj = await pagina.locator('.sheet').innerText();
   ok(/Las calcula tu app Gym/.test(aj) && /1,850 kcal/.test(aj) && !(await pagina.locator('#m-kcal').count()), 'Ajustes muestra las metas de Gym sin editarlas aquí');
+  ok(/mantenimiento real anda en ~1,850 kcal \(bastante menos/.test(aj), 'Ajustes muestra el mantenimiento real');
   await pagina.click('.sheet .grab .x');
 
   // 5. Con Gym conectado: Hoy y Comidas muestran lo registrado en Gym
@@ -200,7 +201,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await p3.click('#tComidas');
   await p3.waitForTimeout(1500);
   const t3 = await p3.locator('#view').innerText();
-  ok(/Panel\.gs/.test(t3) && /Mi licuado/.test(t3), 'sin Panel.gs: muestra hoy (de la app Gym) y avisa qué agregar');
+  ok(/versión 8.1 o más nueva/.test(t3) && /Mi licuado/.test(t3), 'script de Gym viejo: muestra hoy (de la app Gym) y avisa que se actualice');
 
   ok(!errores.length, 'sin errores en la consola' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await navegador.close();

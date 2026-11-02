@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.4';
+const VERSION_APP = '1.5';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -394,7 +394,9 @@ function hojaAjustes() {
   h += '<div class="fl" id="aj-metas">Metas de comida por día</div>';
   if (m.deGym) h += '<div class="note"><b>' + fmt0(m.kcal) + ' kcal</b> · Proteína ' + Math.round(m.p) + ' g · Carbs ' + Math.round(m.c) + ' g · Grasa ' + Math.round(m.g) + ' g</div>' +
     '<div class="hint">' + (m.auto ? 'Las calcula tu app Gym con tu peso, tus días de gym y tus km' + (m.mant ? ' (mantenimiento ~' + fmt0(m.mant) + ' kcal' + (m.porque ? '; ' + esc(m.porque) : '') + ')' : '') +
-      ' y se ajustan solas cada semana.' : 'Son las que pusiste en tu app Gym.') + ' Para cambiarlas: Gym › Comida › toca las barras de calorías.</div>';
+      ' y se ajustan solas cada semana.' : 'Son las que pusiste en tu app Gym.') + ' Para cambiarlas: Gym › Comida › toca las barras de calorías.</div>' +
+    (m.mantReal ? '<div class="hint">📊 Con lo que registras y cómo se mueve tu peso, tu mantenimiento real anda en ~' + fmt0(m.mantReal) + ' kcal' +
+      (m.mant && m.mantReal < m.mant - 300 ? ' (bastante menos que la fórmula: seguro algo no se está anotando).' : '.') + '</div>' : '');
   else h += '<div class="g4">' +
     [['kcal', 'kcal'], ['p', 'Proteína g'], ['c', 'Carbs g'], ['g', 'Grasa g']].map(([k, t]) =>
       '<div><label for="m-' + k + '">' + t + '</label><input class="inp" id="m-' + k + '" type="number" inputmode="numeric" min="0" value="' + Math.round(m[k]) + '" oninput="sumaMetas()"></div>').join('') + '</div>' +

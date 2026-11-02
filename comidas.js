@@ -27,7 +27,7 @@ function guardarDB() { if (!LS.set('pan_db', DB)) toast('Tu celular no tiene esp
 function metasDeGym() { const g = typeof COMGYM !== 'undefined' && COMGYM && COMGYM.metasGym; return g && g.deGym && g.kcal ? g : null; }
 function metas() {
   const g = metasDeGym();
-  if (g) return { kcal: g.kcal, p: g.p, c: g.c, g: g.g, deGym: true, auto: g.auto, mant: g.mant, porque: g.porque || '' };
+  if (g) return { kcal: g.kcal, p: g.p, c: g.c, g: g.g, deGym: true, auto: g.auto, mant: g.mant, mantReal: g.mantReal || null, porque: g.porque || '' };
   const m = DB && DB.metas; return m && m.kcal ? m : Object.assign({}, CONFIG.METAS);
 }
 const r0 = n => Math.round(Number(n) || 0);
