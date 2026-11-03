@@ -180,3 +180,18 @@ test('Frecuentes para el plan: lo que más comes, con los macros de la última v
   const f = CALC.frecuentes(r);
   assert.deepStrictEqual(f.map(x => [x.nombre, x.n, x.comida, x.kcal]), [['Mi licuado', 3, 'desayuno', 495], ['Quesadillas', 1, 'cena', 500]]);
 });
+
+test('semana de carrera igual que Gym: descarga de lunes a la carrera, víspera y día de carrera sin gym; la fecha manda la de Gym', () => {
+  const d = { todayKey: '2026-11-17', sugGrupo: 'Pull', ultimoGrupo: 'Push', ultimoGrupoFecha: '2026-11-16', dias: [1, 2, 3, 4, 5], carrera: { fecha: '2026-11-21', km: 5 } };
+  const mar = CALC.gymHoy(d, '2026-11-17', 4);
+  assert.ok(mar.semanaCarrera && !mar.descansa && !mar.visperaCarrera, 'martes: semana de carrera, sí hay gym');
+  const vie = CALC.gymHoy(Object.assign({}, d, { todayKey: '2026-11-20' }), '2026-11-20', 4);
+  assert.ok(vie.visperaCarrera && vie.descansa, 'viernes: víspera, descansa');
+  const sab = CALC.gymHoy(Object.assign({}, d, { todayKey: '2026-11-21' }), '2026-11-21', 4);
+  assert.ok(sab.diaCarrera && sab.descansa);
+  const antes = CALC.gymHoy(Object.assign({}, d, { todayKey: '2026-11-13' }), '2026-11-13', 4);
+  assert.ok(!antes.semanaCarrera, 'la semana anterior no es de carrera');
+  // Gym manda; config.js solo si Gym no tiene carrera
+  assert.strictEqual(CALC.gymHoy(d, '2026-11-17', 4, { fecha: '2026-12-01' }).carrera.fecha, '2026-11-21');
+  assert.strictEqual(CALC.gymHoy(Object.assign({}, d, { carrera: null }), '2026-11-17', 4, { fecha: '2026-12-01', nombre: 'X' }).carrera.fecha, '2026-12-01');
+});

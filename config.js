@@ -16,7 +16,7 @@ const CONFIG = {
   URL_FINANZAS: 'https://script.google.com/macros/s/AKfycbzto--9SZE1HU533-sxhHeffrdxBETbBXEN2PEw0YU4U-s918JUNpNHQ7hEYqTHZ16k_g/exec',  // hoja "Mis finanzas 2026"
   URL_COMIDAS: 'https://script.google.com/macros/s/AKfycbxgTpbmp0oPE8hp5iebQhmNCnCf_-jNvOQW9rvN-pQSRqIP6xLzopRaxnUPKeSSVbGWWQ/exec',    // hoja nueva "Comidas 2026"
 
-  // Tu carrera (la cuenta regresiva de Hoy)
+  // Tu carrera: solo de respaldo. Manda la fecha que tengas en la app Gym (Ajustes); esta se usa si Gym no tiene ninguna
   CARRERA: { nombre: 'Carrera de 5 km', fecha: '2026-11-21' },
 
   // Botones rápidos de Hoy

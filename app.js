@@ -4,7 +4,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.5';
+const VERSION_APP = '1.6';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -132,7 +132,7 @@ function recortarGym(d) {
   return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso', 'comidasDias', 'macros7']), {
     resumen: toma(d.resumen, ['semana', 'diasSemana', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7']),
     trotes: toma(d.trotes, ['semanas', 'km7']), cuerpo: toma(d.cuerpo, ['serie', 'actual', 'meta', 'base']),
-    carrera: d.carrera && d.carrera.fecha ? toma(d.carrera, ['fecha', 'nombre']) : null });
+    descargaCarrera: !!d.descargaCarrera, carrera: d.carrera && d.carrera.fecha ? toma(d.carrera, ['fecha', 'nombre', 'km']) : null });
 }
 function recortarFin(d) {
   return { hoja: d.hoja || '',
@@ -234,10 +234,12 @@ function tendencia(v, unidad, texto) {
 function seccionGym(k) {
   const x = DATOS.gym;
   if (!x.d) return errorFuente('gym');
-  const g = CALC.gymHoy(x.d, k, CONFIG.META_DIAS_GYM);
+  const g = CALC.gymHoy(x.d, k, CONFIG.META_DIAS_GYM, CONFIG.CARRERA);
   let h = errorFuente('gym');
-  const lbl = g.entreno ? 'Hoy ya entrenaste' : g.descansa ? 'Hoy descansas · cuando vuelvas toca' : 'Hoy te toca';
-  const linea = g.entreno ? 'Lo que sigue cuando vuelvas: <b>' + g.proximo + '</b>'
+  const lbl = g.diaCarrera ? 'Hoy es tu carrera · gym descansa' : g.visperaCarrera ? 'Mañana es tu carrera · hoy descansas' : g.entreno ? 'Hoy ya entrenaste' : g.descansa ? 'Hoy descansas · cuando vuelvas toca' : 'Hoy te toca';
+  const linea = g.diaCarrera ? '¡Suerte! Calienta bien y sal tranquilo el primer kilómetro.' : g.visperaCarrera ? 'Descansa, hidrátate y cena ligero. Después de la carrera sigue <b>' + g.grupo + '</b>.'
+    : g.semanaCarrera && !g.entreno ? '<b>Semana de carrera: descarga.</b> Mitad de series con el mismo peso (la app Gym ya lo trae así).'
+    : g.entreno ? 'Lo que sigue cuando vuelvas: <b>' + g.proximo + '</b>'
     : g.ultimo ? 'Última vez: <b>' + g.ultimo + '</b>' + (g.ultimoFecha ? ' · ' + diaCorto(g.ultimoFecha) : '') + '. La rotación avanza solo cuando entrenas.' : 'La rotación avanza solo cuando entrenas.';
   h += '<div class="hero gym"><div class="lbl">' + lbl + '</div><div class="big">' + esc(g.grupo) + '<small>' + esc(g.nombre) + '</small></div><div class="of">' + linea + '</div>' +
     '<div class="pie"><div class="rot">' + CALC.GRUPOS3.map(n => '<span class="' + (n === g.grupo ? 'on' + (g.entreno ? ' hecho' : '') : '') + '">' + n + '</span>').join('') + '</div>' +
@@ -259,10 +261,11 @@ function seccionGym(k) {
   return h + tarjetaCarrera(k, g) + tarjetaComidaHoy(k);
 }
 function tarjetaCarrera(k, g) {
-  const c = CONFIG.CARRERA && CONFIG.CARRERA.fecha ? CONFIG.CARRERA : (g.carrera ? { nombre: 'Carrera ' + g.carrera.nombre, fecha: g.carrera.fecha } : null);
+  // La fecha manda la de Gym (Ajustes de la app Gym); config.js solo si Gym no tiene carrera
+  const c = g.carrera ? { nombre: g.carrera.km ? 'Carrera de ' + g.carrera.km + ' km' : /^\d/.test(g.carrera.nombre) ? 'Carrera de ' + g.carrera.nombre : g.carrera.nombre || 'Tu carrera', fecha: g.carrera.fecha } : null;
   if (!c) return '';
   const n = difDias(k, c.fecha);
-  if (n < 0) return '<div class="card"><div class="t1">🏅 Ya pasó tu ' + esc(c.nombre.toLowerCase()) + ' (' + diaCorto(c.fecha) + ')</div><div class="muted">Cambia la fecha de tu próxima carrera en config.js.</div></div>';
+  if (n < 0) return '<div class="card"><div class="t1">🏅 Ya pasó tu ' + esc(c.nombre.toLowerCase()) + ' (' + diaCorto(c.fecha) + ')</div><div class="muted">Pon la fecha de tu próxima carrera en la app Gym (Ajustes).</div></div>';
   const sem = Math.floor(n / 7), d = n % 7;
   const falta = n === 0 ? '¡Es hoy! Calienta bien y sal tranquilo el primer kilómetro.' : n === 1 ? 'Es mañana: descansa, hidrátate y cena ligero.'
     : 'Faltan ' + (sem ? sem + (sem === 1 ? ' semana' : ' semanas') + (d ? ' y ' + d + (d === 1 ? ' día' : ' días') : '') : n + ' días') + '.';

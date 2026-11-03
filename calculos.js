@@ -22,7 +22,7 @@ const CALC = (() => {
   // Lo de Hoy a partir de lo que manda tu script de Gym (la misma acción "data" que usa la app Gym).
   // La rotación la decide la hoja (sugGrupo): solo avanza cuando entrenas. Si los datos son de otro día,
   // se hace lo mismo que la app Gym: el siguiente después del último que entrenaste.
-  function gymHoy(d, hoy, metaDias) {
+  function gymHoy(d, hoy, metaDias, respaldoCarrera) {
     d = d || {};
     const r = d.resumen || {}, t = d.trotes || {}, cu = d.cuerpo || {};
     const ultimo = GRUPOS3.indexOf(d.ultimoGrupo) >= 0 ? d.ultimoGrupo : null;
@@ -44,15 +44,22 @@ const CALC = (() => {
     const pesos = serie.filter(x => !vacio(x.peso)).map(x => ({ d: x.d, v: num(x.peso) }));
     const cints = serie.filter(x => !vacio(x.cint)).map(x => ({ d: x.d, v: num(x.cint) }));
     const ultCint = cints.length ? cints[cints.length - 1].v : (!vacio(cu.actual) ? num(cu.actual) : (!vacio(r.cintura) ? num(r.cintura) : null));
+    // Semana de la carrera (igual que la app Gym): de lunes al día de la carrera es descarga (mitad de series, mismo peso),
+    // la víspera se descansa y el día de la carrera no hay gym. La fecha es la de Gym (respaldo: config.js)
+    const car = d.carrera && d.carrera.fecha ? String(d.carrera.fecha).slice(0, 10) : (respaldoCarrera && respaldoCarrera.fecha) || null;
+    const semanaCarrera = !!car && car >= hoy && lunesDe(car) === lunesDe(hoy);
+    const visperaCarrera = !!car && sumarDias(car, -1) === hoy, diaCarrera = car === hoy;
     return {
+      semanaCarrera, visperaCarrera, diaCarrera,
       grupo, nombre: NOMBRE_GRUPO[grupo] || '', entreno, proximo: siguiente(grupo),
-      descansa: !entreno && dias.indexOf(diaSemana(hoy)) < 0, ultimo, ultimoFecha: d.ultimoGrupoFecha || null,
+      descansa: !entreno && (dias.indexOf(diaSemana(hoy)) < 0 || visperaCarrera || diaCarrera), ultimo, ultimoFecha: d.ultimoGrupoFecha || null,
       diasSemana, metaDias: metaDias || 4, semana, kmSemana, semanas, fresca, fechaDatos: d.todayKey || null,
       peso: { ultimo: vacio(d.ultimoPeso) ? (pesos.length ? pesos[pesos.length - 1].v : null) : num(d.ultimoPeso),
               promedio7: vacio(r.promedio7) ? null : num(r.promedio7), cambio: vacio(r.cambioSemana) ? null : r1(r.cambioSemana), serie: pesos },
       cintura: { ultima: ultCint, cambio: cints.length >= 2 ? r1(cints[cints.length - 1].v - cints[cints.length - 2].v) : null,
                  desdeInicio: vacio(r.cambioCintura) ? null : r1(r.cambioCintura), meta: vacio(cu.meta) ? null : num(cu.meta), serie: cints },
-      carrera: d.carrera && d.carrera.fecha ? { fecha: String(d.carrera.fecha), nombre: String(d.carrera.nombre || '') } : null
+      carrera: d.carrera && d.carrera.fecha ? { fecha: String(d.carrera.fecha).slice(0, 10), nombre: String(d.carrera.nombre || ''), km: num(d.carrera.km) || null }
+        : respaldoCarrera && respaldoCarrera.fecha ? { fecha: respaldoCarrera.fecha, nombre: respaldoCarrera.nombre || '', km: null } : null
     };
   }
 
