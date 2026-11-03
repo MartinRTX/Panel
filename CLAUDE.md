@@ -21,8 +21,8 @@ Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (lo que regi
   La clave va en las Propiedades del script (`CLAVE`); en el código queda `PON_AQUI_TU_CLAVE` y así debe quedarse
   (el workflow no publica si cambia; el repo es público: nunca escribir la clave real). **Se publica solo desde GitHub** (desde el 03/11/2026):
   el workflow "Publicar Comidas (Panel)" de Gym-script (`.github/workflows/comidas.yml`) toma este archivo de `main`
-  con clasp, crea versión y actualiza la misma implementación (la URL de `config.js` no cambia); corre cada día o a mano.
-  NUNCA pegarlo a mano ni pedirle a Martin que lo pegue en el Apps Script (clasp lo pisaría). Basta con subir a `main`: sale en la corrida diaria (6:23 am) o al correrlo a mano.
+  con clasp, crea versión y actualiza la misma implementación (la URL de `config.js` no cambia); corre cada hora o a mano.
+  NUNCA pegarlo a mano ni pedirle a Martin que lo pegue en el Apps Script (clasp lo pisaría). Basta con subir a `main`: sale en menos de una hora (revisa cada hora, minuto 23) o al correrlo a mano.
 - Las URL /exec van en `config.js` (o en Ajustes de la app). Las claves solo en el celular (`pan_conexion`).
 - Comidas es "primero el celular": `pan_db` + cola `pan_cola` (operaciones por ID, idempotentes) que se sube en lotes.
 - El patrimonio neto NO incluye deudas con personas (Martin lo pidió así): personas van aparte.
