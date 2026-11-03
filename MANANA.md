@@ -106,7 +106,7 @@ Las mejoras de la app llegan solas (por GitHub Pages); solo reinstalas si cambia
 | "La clave no coincide con la de Apps Script" | La clave de la app y la propiedad `CLAVE` del script deben ser idénticas. |
 | "Apps Script no dejó entrar…" | En la implementación, "Quién tiene acceso" debe ser **Cualquier usuario**. |
 | "Clave: falta poner tu clave en las Propiedades del script" | Falta la propiedad `CLAVE` (paso 5 de la sección 2). |
-| Cambió el script de Comidas | Nada: se publica solo desde GitHub (en menos de una hora, o al correr "Publicar Comidas (Panel)" en Gym-script). Nunca pegarlo a mano. |
+| Cambió el script de Comidas | Nada: se publica solo desde GitHub (en menos de 3 horas, o al correr "Publicar Comidas (Panel)" en Gym-script). Nunca pegarlo a mano. |
 | Algo de Gym o Finanzas sale raro | Mándame captura. Lo probé con datos con la misma forma que mandan sus scripts, pero no con tus datos reales. |
 
 ---
