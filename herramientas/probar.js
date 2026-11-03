@@ -19,11 +19,14 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
 
 (async () => {
   fs.mkdirSync(SALIDA, { recursive: true });
+  // CAMBIOS['/app.js'] = texto => nuevo: simula que se publicó un archivo distinto (prueba del service worker)
+  const CAMBIOS = {};
   const servidor = http.createServer((req, res) => {
-    const f = path.join(RAIZ, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html'));
+    const ruta = decodeURIComponent(req.url.split('?')[0]);
+    const f = path.join(RAIZ, ruta.replace(/\/$/, '/index.html'));
     if (!f.startsWith(RAIZ) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(f)] || 'application/octet-stream' });
-    res.end(fs.readFileSync(f));
+    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    res.end(CAMBIOS[ruta] ? CAMBIOS[ruta](fs.readFileSync(f, 'utf8')) : fs.readFileSync(f));
   }).listen(0);
   const base = 'http://localhost:' + servidor.address().port + '/';
 
@@ -171,6 +174,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   ok(await pagina.locator('.anillo').count() === 1 && /Mi licuado/.test(await texto()), 'abre sin señal con lo último de Gym');
   await ctx.setOffline(false);
 
+
   // 7. URL equivocada (la de Gym pegada en Comidas, como en config.js con dos URL iguales): se avisa y no se pierde nada
   // Otro celular en limpio (otro contexto: nada guardado), con la URL de Gym también en Comidas
   const ctx2 = await navegador.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', serviceWorkers: 'block' });
@@ -213,6 +217,26 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   const t3 = await p3.locator('#view').innerText();
   ok(/versión 8.1 o más nueva/.test(t3) && /Mi licuado/.test(t3), 'script de Gym viejo: muestra hoy (de la app Gym) y avisa que se actualice');
 
+  // Service worker todo o nada: un app.js publicado sin cambiar VERSION no se mezcla con la versión instalada…
+  CAMBIOS['/app.js'] = x => x + '\n/*NUEVO*/';
+  await pagina.reload(); await pagina.waitForTimeout(800);
+  const mezcla = await pagina.evaluate(async () => {
+    const servido = (await (await fetch('app.js')).text()).includes('/*NUEVO*/');
+    const c = await caches.open((await caches.keys()).find(k => /^panel-v/.test(k)));
+    return { servido, guardado: (await (await c.match('app.js')).text()).includes('/*NUEVO*/') };
+  });
+  ok(!mezcla.servido && !mezcla.guardado, 'service worker: un archivo nuevo no se mezcla con la versión instalada');
+  // …y config.js sí va primero por la red
+  CAMBIOS['/config.js'] = x => x + '\n/*CONFIG-NUEVO*/';
+  ok(await pagina.evaluate(async () => (await (await fetch('config.js')).text()).includes('/*CONFIG-NUEVO*/')), 'service worker: config.js va primero por la red');
+  // Al subir VERSION llega la versión nueva completa y la app se recarga sola
+  CAMBIOS['/sw.js'] = x => x.replace(/const VERSION = '([^']+)'/, "const VERSION = '$1-prueba'");
+  await pagina.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
+  await pagina.waitForFunction(async () => (await caches.keys()).some(k => /-prueba$/.test(k)), null, { timeout: 15000 }).catch(() => {});
+  await pagina.waitForTimeout(1500);
+  const nueva = await pagina.evaluate(async () => ({ caches: await caches.keys(), app: (await (await fetch('app.js')).text()).includes('/*NUEVO*/') }));
+  ok(nueva.app && nueva.caches.length === 1 && /-prueba$/.test(nueva.caches[0]), 'service worker: con VERSION nueva baja todo junto y borra lo viejo');
+  delete CAMBIOS['/app.js']; delete CAMBIOS['/config.js']; delete CAMBIOS['/sw.js'];
   // En Chrome la política de seguridad no deja correr JS metido en el HTML (ni on…= ni data-click fuera de ACCIONES)
   const bloqueado = await pagina.evaluate(async () => {
     window.__inyectado = 0;
