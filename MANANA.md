@@ -19,6 +19,9 @@ Yo no tengo permiso para activarlo; el código ya está en la rama `main`.
 
 ## 2. Crear la hoja "Comidas 2026" y su Apps Script (8 min)
 
+> **Ya hecho (03/11/2026).** Desde ahora el código de Comidas **se publica solo desde GitHub** (workflow "Publicar Comidas
+> (Panel)" en Gym-script): **nunca lo pegues a mano** en el Apps Script. Los pasos 3–4 de abajo solo sirvieron para crearlo.
+
 1. Abre https://sheets.new (con tu cuenta de siempre) y ponle de nombre **Comidas 2026**. No hace falta crear pestañas: el script las crea.
 2. En la hoja: **Extensiones › Apps Script**. Arriba a la izquierda cámbiale el nombre al proyecto a **Comidas API**.
 3. Abre https://github.com/MartinRTX/Panel/blob/main/apps-script/Comidas.gs, toca el botón de **copiar** (los dos cuadritos, "Copy raw file").
@@ -103,7 +106,7 @@ Las mejoras de la app llegan solas (por GitHub Pages); solo reinstalas si cambia
 | "La clave no coincide con la de Apps Script" | La clave de la app y la propiedad `CLAVE` del script deben ser idénticas. |
 | "Apps Script no dejó entrar…" | En la implementación, "Quién tiene acceso" debe ser **Cualquier usuario**. |
 | "Clave: falta poner tu clave en las Propiedades del script" | Falta la propiedad `CLAVE` (paso 5 de la sección 2). |
-| Cambiaste el script de Comidas | **Implementar › Gestionar implementaciones › ✏️ › Versión: Nueva versión › Implementar** (la URL no cambia). |
+| Cambió el script de Comidas | Nada: se publica solo desde GitHub (cada día o al correr "Publicar Comidas (Panel)" en Gym-script). Nunca pegarlo a mano. |
 | Algo de Gym o Finanzas sale raro | Mándame captura. Lo probé con datos con la misma forma que mandan sus scripts, pero no con tus datos reales. |
 
 ---
