@@ -59,7 +59,8 @@ function libroNuevo(nombre) {
   return lb;
 }
 
-function cargarScript(clave) {
+// clave: se escribe en la línea de CLAVE (como cuando se pegaba a mano). props: Propiedades del script ({ CLAVE: … })
+function cargarScript(clave, props) {
   const lb = libroNuevo();
   let codigo = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Comidas.gs'), 'utf8');
   if (clave) codigo = codigo.replace("const CLAVE = 'PON_AQUI_TU_CLAVE';", "const CLAVE = '" + clave + "';");
@@ -67,6 +68,7 @@ function cargarScript(clave) {
     SpreadsheetApp: { getActiveSpreadsheet: () => lb },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: s => ({ contenido: s, setMimeType() { return this; } }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => (props && props[k] !== undefined ? props[k] : null) }) },
     Logger: { log() {} },
     Utilities: {
       formatDate: (d, tz, fmt) => { if (fmt !== 'yyyy-MM-dd') throw new Error('formato no simulado: ' + fmt); return aClave(d); },

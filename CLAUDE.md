@@ -17,8 +17,11 @@ Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (lo que regi
   Sin esa acción usa `comidasDias` (hoy y ayer) de `data`. **Las metas las calcula Gym** (opción A, Martin lo eligió) y llegan en
   `comidasPanel().metas` con `deGym: true`; Panel solo las muestra (Ajustes no las edita mientras existan). Panel no escribe nada en Gym.
 - Plan semanal, platillos para planear y metas: script propio `apps-script/Comidas.gs` (hoja "Comidas 2026").
-  Lo registrado en Panel antes del cambio (pestaña Registro) se sigue sumando como "de Panel". Martin pega los .gs a mano.
-  **En el repo la clave siempre es `PON_AQUI_TU_CLAVE`** (el repo es público). Si cambia, decirle qué pasos repetir.
+  Lo registrado en Panel antes del cambio (pestaña Registro) se sigue sumando como "de Panel".
+  La clave va en las Propiedades del script (`CLAVE`); en el código queda `PON_AQUI_TU_CLAVE` solo como respaldo para
+  quien lo pega a mano (el repo es público: nunca escribir la clave real). Publicación con clasp: la hace el workflow de
+  Gym-script (job `comidas`, toma este archivo de `main`) en cuanto Martin dé el ID del script y ponga la propiedad;
+  mientras tanto se pega a mano. Si cambia, decirle qué pasos repetir.
 - Las URL /exec van en `config.js` (o en Ajustes de la app). Las claves solo en el celular (`pan_conexion`).
 - Comidas es "primero el celular": `pan_db` + cola `pan_cola` (operaciones por ID, idempotentes) que se sube en lotes.
 - El patrimonio neto NO incluye deudas con personas (Martin lo pidió así): personas van aparte.

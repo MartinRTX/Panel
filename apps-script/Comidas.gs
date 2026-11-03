@@ -3,7 +3,8 @@
  *
  * Para instalar (una sola vez; los pasos completos están en MANANA.md):
  *  1. En la hoja "Comidas 2026": Extensiones > Apps Script. Borra lo que haya y pega este archivo completo.
- *  2. En la línea de CLAVE pon tu clave (puede ser la misma de Gym y Finanzas). Guarda (💾).
+ *  2. ⚙️ Configuración del proyecto > Propiedades del script > Agregar: propiedad CLAVE, valor tu clave (puede ser la
+ *     misma de Gym y Finanzas). Guarda. (Antes se escribía en la línea de CLAVE del código; eso sigue funcionando.)
  *  3. Arriba elige la función "instalar" y toca Ejecutar. Acepta los permisos: crea las pestañas.
  *  4. Implementar > Nueva implementación > ⚙️ "Aplicación web". Ejecutar como: Yo. Quién tiene acceso: Cualquier usuario.
  *     Implementar y copia la "URL de la app web" (termina en /exec): va en config.js de Panel.
@@ -17,6 +18,9 @@
  * La app manda los cambios con un ID: si un cambio llega dos veces, se sobrescribe y nunca se duplica.
  */
 
+// La clave va en las Propiedades del script (⚙️ Configuración del proyecto > Propiedades del script > CLAVE): así este
+// archivo se publica con clasp desde GitHub sin escribir la clave en ningún lado. La línea de abajo es solo para quien
+// todavía lo pega a mano; si las dos existen, gana la de Propiedades.
 const CLAVE = 'PON_AQUI_TU_CLAVE';
 const VERSION = 1;
 
@@ -69,9 +73,15 @@ function responder(fn) {
   return ContentService.createTextOutput(JSON.stringify(salida)).setMimeType(ContentService.MimeType.JSON);
 }
 
+function claveDelScript() {
+  let p = '';
+  try { p = String(PropertiesService.getScriptProperties().getProperty('CLAVE') || '').trim(); } catch (e) {}
+  return p || (CLAVE !== 'PON_AQUI_TU_CLAVE' ? CLAVE : '');
+}
 function revisarClave(k) {
-  if (CLAVE === 'PON_AQUI_TU_CLAVE') throw new Error('Clave: falta poner tu clave en el código de Apps Script');
-  if (!k || String(k) !== CLAVE) throw new Error('Clave incorrecta');
+  const c = claveDelScript();
+  if (!c) throw new Error('Clave: falta poner tu clave en las Propiedades del script (CLAVE)');
+  if (!k || String(k) !== c) throw new Error('Clave incorrecta');
 }
 
 function ejecutar(accion, args) {

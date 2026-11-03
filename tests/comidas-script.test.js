@@ -16,6 +16,16 @@ test('Sin clave puesta en el script: avisa que falta (no deja entrar)', () => {
   assert.match(r.error, /falta poner tu clave/);
 });
 
+test('Clave en las Propiedades del script (para publicar con clasp): funciona sin escribirla en el código', () => {
+  const s = cargarScript(null, { CLAVE: K });
+  assert.strictEqual(s.get({ k: K }).result, 'ok');
+  assert.match(s.post({ k: 'otra', action: 'data' }).error, /Clave incorrecta/);
+  // Si están las dos, gana la de Propiedades
+  const d = cargarScript('vieja', { CLAVE: K });
+  assert.strictEqual(d.get({ k: K }).result, 'ok');
+  assert.match(d.get({ k: 'vieja' }).error, /Clave incorrecta/);
+});
+
 test('Clave incorrecta: no lee ni escribe nada', () => {
   const s = cargarScript(K);
   assert.strictEqual(s.post({ k: 'otra', action: 'data' }).ok, false);

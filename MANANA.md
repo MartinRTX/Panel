@@ -23,8 +23,10 @@ Yo no tengo permiso para activarlo; el código ya está en la rama `main`.
 2. En la hoja: **Extensiones › Apps Script**. Arriba a la izquierda cámbiale el nombre al proyecto a **Comidas API**.
 3. Abre https://github.com/MartinRTX/Panel/blob/main/apps-script/Comidas.gs, toca el botón de **copiar** (los dos cuadritos, "Copy raw file").
 4. En Apps Script, en `Código.gs`, **borra todo** y **pega** el archivo.
-5. Busca la línea `const CLAVE = 'PON_AQUI_TU_CLAVE';` y cambia `PON_AQUI_TU_CLAVE` por tu clave
-   (puede ser la misma que usas en Gym y Finanzas). Guarda con 💾 (o Ctrl+S).
+5. Guarda con 💾 (o Ctrl+S). Luego, en la barra de la izquierda, **⚙️ Configuración del proyecto › Propiedades del
+   script › Agregar propiedad del script**: propiedad `CLAVE`, valor tu clave (puede ser la misma que usas en Gym y
+   Finanzas) › **Guardar propiedades del script**. (Antes se escribía en el código; así ya no hace falta y el script se
+   puede publicar solo desde GitHub.)
 6. Arriba, junto a "Ejecutar", elige la función **instalar** y toca **Ejecutar**.
    - Te pide permisos: **Revisar permisos** › tu cuenta › si sale "Google no ha verificado esta app":
      **Avanzado** (o "Configuración avanzada") **› Ir a Comidas API (no seguro)** › **Permitir**. (Es tu propio script; solo toca esta hoja.)
@@ -98,9 +100,9 @@ Las mejoras de la app llegan solas (por GitHub Pages); solo reinstalas si cambia
 
 | Lo que ves | Qué hacer |
 |---|---|
-| "La clave no coincide con la de Apps Script" | La clave de la app y la de `CLAVE` en el script deben ser idénticas. Si cambiaste el script, vuelve a implementar (abajo). |
+| "La clave no coincide con la de Apps Script" | La clave de la app y la propiedad `CLAVE` del script deben ser idénticas. |
 | "Apps Script no dejó entrar…" | En la implementación, "Quién tiene acceso" debe ser **Cualquier usuario**. |
-| "Clave: falta poner tu clave en el código" | No cambiaste `PON_AQUI_TU_CLAVE` en el script, o no implementaste la versión nueva. |
+| "Clave: falta poner tu clave en las Propiedades del script" | Falta la propiedad `CLAVE` (paso 5 de la sección 2). |
 | Cambiaste el script de Comidas | **Implementar › Gestionar implementaciones › ✏️ › Versión: Nueva versión › Implementar** (la URL no cambia). |
 | Algo de Gym o Finanzas sale raro | Mándame captura. Lo probé con datos con la misma forma que mandan sus scripts, pero no con tus datos reales. |
 
