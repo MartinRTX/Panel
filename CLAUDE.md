@@ -25,9 +25,11 @@ Dos pestañas: **Hoy** (gym y finanzas, solo lectura) y **Comidas** (lo que regi
 
 ## Estructura
 
-- `index.html` (estilos y esqueleto), `config.js`, `calculos.js` (sin pantalla, con pruebas), `ejemplo.js` (datos de ejemplo),
+- `index.html` (estilos y esqueleto, sin JS adentro), `seguridad.js` (CSP estricta solo en Chrome) y `tema.js` (en el `<head>`), `config.js`, `calculos.js` (sin pantalla, con pruebas), `ejemplo.js` (datos de ejemplo),
   `app.js` (núcleo, Hoy, Ajustes, conexión), `comidas.js` (pestaña Comidas y la cola).
 - `sw.js`: al publicar cambios de la app, subir `VERSION` (y `VERSION_APP` en `app.js`). `config.js` va primero por la red.
 - `herramientas/revisar.js` y `node --test tests/*.test.js` corren en GitHub; `herramientas/probar.js` prueba en Chromium
   con las APIs simuladas (claro/oscuro, sin errores en consola, sin señal); `herramientas/iconos.js` genera los íconos.
+- Botones y casillas: `clic('fn', args…)` / `alEscribir('fn', args…)` (data-click / data-input), nunca `onclick="…"`;
+  la función tiene que ser `function` y estar en `ACCIONES` (app.js). `revisar.js` falla si hay JS dentro del HTML.
 - Comentarios, textos y nombres en español, con el mismo estilo del código que ya existe.

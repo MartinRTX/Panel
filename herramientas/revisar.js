@@ -3,6 +3,8 @@
 //  2. Los scripts de index.html juntos, en el orden en que los carga el navegador: así se detecta una variable
 //     declarada dos veces (const/let repetido), que en el celular deja la app en blanco; y funciones repetidas entre archivos.
 //  3. Que sw.js guarde todos los archivos que carga la app (si falta uno, la app no abre sin señal).
+//  4. Ningún on…="…" ni <script> con código en el HTML: los botones usan clic('fn', …) (data-click) y en Chrome la
+//     política de seguridad (seguridad.js) bloquea el JS en línea.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -38,5 +40,11 @@ if (faltan.length) { errores++; console.error('✗ sw.js no guarda: ' + faltan.j
 else console.log('✓ sw.js guarda todo lo que carga index.html');
 [...sw.matchAll(/'\.\/([^']+)'/g)].map(m => m[1]).filter(f => f && !fs.existsSync(path.join(RAIZ, f)))
   .forEach(f => { errores++; console.error('✗ sw.js pide un archivo que no existe: ' + f); });
+
+// Sin JS dentro del HTML: ni on…="…" (en index.html ni en lo que pintan los .js) ni <script> con código
+const conCodigo = scripts.concat(['index.html']).filter(f => /\son[a-z]+=\\?["']/.test(fs.readFileSync(path.join(RAIZ, f), 'utf8')));
+if (/<script(?![^>]*\bsrc=)[^>]*>\s*\S/.test(html)) conCodigo.push('index.html (<script> con código)');
+if (conCodigo.length) { errores++; console.error('✗ JS dentro del HTML en ' + conCodigo.join(', ') + ': usa clic(\'fn\', …) o alEscribir(\'fn\', …)'); }
+else console.log('✓ sin JS dentro del HTML');
 
 if (errores) process.exit(1);

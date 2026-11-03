@@ -121,7 +121,17 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   const aj = await pagina.locator('.sheet').innerText();
   ok(/Las calcula tu app Gym/.test(aj) && /1,850 kcal/.test(aj) && !(await pagina.locator('#m-kcal').count()), 'Ajustes muestra las metas de Gym sin editarlas aquí');
   ok(/mantenimiento real anda en ~1,850 kcal \(bastante menos/.test(aj), 'Ajustes muestra el mantenimiento real');
-  await pagina.click('.sheet .grab .x');
+  // Platillo nuevo: las casillas (data-input) y los botones (data-click) del editor funcionan sin JS en el HTML
+  await pagina.click('.sheet .it:has-text("Nuevo platillo")');
+  await pagina.fill('.sheet input[placeholder^="p. ej."]', 'Molletes de prueba');
+  await pagina.fill('.sheet .g4 input >> nth=0', '420');
+  await pagina.click('.sheet .switch');
+  await pagina.click('.sheet .actbar .btn:has-text("Guardar")');
+  await pagina.waitForTimeout(300);
+  const subio = await pagina.waitForFunction(() => !JSON.parse(localStorage.getItem('pan_cola') || '[]').length, null, { timeout: 8000 }).then(() => true).catch(() => false);
+  ok(subio && await pagina.evaluate(() => DB.guardadas.some(g => g.nombre === 'Molletes de prueba' && Number(g.kcal) === 420 && g.fav === false)) &&
+    (hoja.post({ k: 'secreta', action: 'data', args: [30] }).result.guardadas || []).some(g => g.nombre === 'Molletes de prueba'), 'editor de platillos: escribir, interruptor, guardar y subir a la hoja');
+  if (await pagina.locator('.sheet.show').count()) await pagina.click('.sheet .grab .x');
 
   // 5. Con Gym conectado: Hoy y Comidas muestran lo registrado en Gym
   await pagina.click('#tHoy');
@@ -203,7 +213,17 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   const t3 = await p3.locator('#view').innerText();
   ok(/versión 8.1 o más nueva/.test(t3) && /Mi licuado/.test(t3), 'script de Gym viejo: muestra hoy (de la app Gym) y avisa que se actualice');
 
-  ok(!errores.length, 'sin errores en la consola' + (errores.length ? ': ' + errores.join(' | ') : ''));
+  // En Chrome la política de seguridad no deja correr JS metido en el HTML (ni on…= ni data-click fuera de ACCIONES)
+  const bloqueado = await pagina.evaluate(async () => {
+    window.__inyectado = 0;
+    const d = document.createElement('div');
+    d.innerHTML = '<img src="x.png" onerror="window.__inyectado=1"><button id="malo" data-click="eval" data-args=\'["window.__inyectado=2"]\'>x</button>';
+    document.body.appendChild(d); d.querySelector('#malo').click();
+    await new Promise(r => setTimeout(r, 400)); d.remove(); return window.__inyectado;
+  });
+  ok(bloqueado === 0, 'JS metido en el HTML no corre (política de seguridad y lista de acciones)');
+  const otros = errores.filter(e => !/Content Security Policy|x\.png|404/.test(e));   // lo bloqueado a propósito arriba no cuenta
+  ok(!otros.length, 'sin errores en la consola' + (otros.length ? ': ' + otros.join(' | ') : ''));
   await navegador.close();
   servidor.close();
   console.log(fallas ? '\n' + fallas + ' fallas' : '\nTodo bien. Capturas en ' + SALIDA);

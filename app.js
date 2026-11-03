@@ -16,6 +16,25 @@ const $ = id => document.getElementById(id);
 const { r1, claveDia, sumarDias, difDias, diaSemana, lunesDe } = CALC;
 function hoy() { return claveDia(new Date()); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+// Botones y casillas sin JS dentro del HTML (así la política de seguridad puede prohibir el JS en línea):
+// clic('fn', a, b) pone data-click y los argumentos en JSON; alEscribir('fn', a) llama fn(a, valor) al escribir.
+// Un solo listener por evento las corre, y solo si están en ACCIONES (un data-click metido en un texto no hace nada).
+const clic = (fn, ...args) => ' data-click="' + fn + '"' + (args.length ? ' data-args="' + esc(JSON.stringify(args)) + '"' : '');
+const alEscribir = (fn, ...args) => ' data-input="' + fn + '"' + (args.length ? ' data-args="' + esc(JSON.stringify(args)) + '"' : '');
+const ACCIONES = new Set(['abrirAjustes', 'abrirApp', 'abrirEditorGuardada', 'abrirGymComida', 'accionToast', 'actualizarHoy', 'borrarGuardada',
+  'borrarRegistro', 'cerrarHoja', 'copiarSemana', 'edCampo', 'edComida', 'edFav', 'elegirPlan', 'elegirTema', 'entendidoAvisoPanelGs',
+  'entendidoRechazados', 'exportar', 'guardarGuardadaForm', 'guardarMetasForm', 'llenarSiempre', 'moverDia', 'moverResumen', 'moverSemana',
+  'olvidarConexion', 'ponerPlan', 'probarConexion', 'quitarPlan', 'repartir', 'sincronizar', 'sumaMetas', 'tocarSync', 'usarDeApp',
+  'verMasCats', 'verSub', 'verTab', 'volverDeEditor']);
+function correrAccion(el, attr, e, extra) {
+  const fn = el.getAttribute(attr);
+  if (!ACCIONES.has(fn) || typeof window[fn] !== 'function') return;
+  let args = [];
+  try { args = JSON.parse(el.getAttribute('data-args') || '[]'); } catch (x) { return; }
+  if (window[fn].apply(el, extra === undefined ? args : args.concat([extra])) === false) e.preventDefault();
+}
+document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-click]'); if (el) correrAccion(el, 'data-click', e); });
+document.addEventListener('input', e => { const el = e.target; if (el && el.hasAttribute && el.hasAttribute('data-input')) correrAccion(el, 'data-input', e, el.value); });
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -49,9 +68,9 @@ function nativo(plugin, metodo, opts) {
 const APKS = { gym: { paquete: 'com.martinrtx.gym' }, finanzas: { paquete: 'com.martinrtx.finanzas' },
                gasto: { paquete: 'com.martinrtx.finanzas', extra: 'finanzas_accion', valor: 'gasto' },
                comida: { paquete: 'com.martinrtx.gym', uri: 'gymmb://accion/comida' } };
-function abrirApp(ev, k) {
+// Devuelve false cuando la abre el APK: el que la llamó desde un link (clic) cancela el link normal
+function abrirApp(k) {
   if (!NATIVO) return true;               // en el navegador, el link normal
-  if (ev) ev.preventDefault();
   vibrar(8);
   nativo('Panel', 'abrirApp', Object.assign({ url: CONFIG.APPS[k] || CONFIG.APPS.gym }, APKS[k])).then(r => { if (!r) toast('No pude abrir ' + (k === 'gym' ? 'Gym' : 'Finanzas')); });
   return false;
@@ -61,11 +80,13 @@ function saludo() { const h = new Date().getHours(); return h < 12 ? 'Buenos dí
 let TOAST_T = null, TOAST_FN = null;
 function toast(msg, accion) {
   const t = $('toast');
-  t.innerHTML = '<span>' + esc(msg) + '</span>' + (accion ? '<button onclick="accionToast()">' + esc(accion.txt) + '</button>' : '');
+  t.innerHTML = '<span>' + esc(msg) + '</span>' + (accion ? '<button' + clic('accionToast') + '>' + esc(accion.txt) + '</button>' : '');
   TOAST_FN = accion ? accion.fn : null;
   t.classList.add('show');
   clearTimeout(TOAST_T); TOAST_T = setTimeout(() => { t.classList.remove('show'); TOAST_FN = null; }, accion ? 5000 : 2800);
 }
+function verMasCats() { VER_CATS = !VER_CATS; pintar(); }
+function entendidoRechazados() { LS.del('pan_rechazados'); refrescarHoja(); }
 function accionToast() { const f = TOAST_FN; TOAST_FN = null; $('toast').classList.remove('show'); if (f) f(); }
 
 const SVG = {
@@ -191,7 +212,7 @@ function pintarHoy() {
   const fl = fechaLarga(k);
   let h = '<div class="saludo"><div class="fecha">' + fl[0].toUpperCase() + fl.slice(1) + '</div><div class="hola">' + saludo() + ', Martin</div></div>' + rapidos();
   const rep = urlsRepetidas(), ej = ['gym', 'fin'].filter(f => DATOS[f].ejemplo), sinClave = ej.filter(f => urlDe(f) && !claveDe(f));
-  const ir = txt => ' <button class="link" style="padding:0;min-height:0;color:inherit;text-decoration:underline" onclick="abrirAjustes(\'conexion\')">' + txt + '</button>';
+  const ir = txt => ' <button class="link" style="padding:0;min-height:0;color:inherit;text-decoration:underline"' + clic('abrirAjustes', 'conexion') + '>' + txt + '</button>';
   if (rep.length) h += '<div class="note red" style="margin-top:12px"><b>' + rep.join(', ') + ' tienen la misma URL</b>: una de las dos está mal. Revisa config.js.' + ir('Ver conexión') + '</div>';
   if (ej.length) h += '<div class="note" style="margin-top:12px">' + (ej.length === 2 ? 'Gym y Finanzas muestran' : FUENTES[ej[0]].nombre + ' muestra') + ' <b>datos de ejemplo</b>' +
     (sinClave.length ? ': falta poner tu clave en esta app. Si la pusiste en Chrome, en la APK se pone otra vez (no comparten datos).' + ir('Poner clave') : ' hasta que conectes tus hojas.' + ir('Conectar')) + '</div>';
@@ -201,21 +222,21 @@ function pintarHoy() {
 }
 function tagFuente(f) {
   const x = DATOS[f];
-  if (x.ejemplo) return '<button class="tag ej" onclick="abrirAjustes(\'conexion\')">Ejemplo</button>';
+  if (x.ejemplo) return '<button class="tag ej"' + clic('abrirAjustes', 'conexion') + '>Ejemplo</button>';
   if (CARGANDO[f] && !x.d) return '<span class="tag">Cargando…</span>';
-  if (x.error) return '<button class="tag err" onclick="actualizarHoy(true)">Sin actualizar</button>';
-  return '<button class="tag ok" onclick="actualizarHoy(true)">' + haceCuanto(x.ts) + '</button>';
+  if (x.error) return '<button class="tag err"' + clic('actualizarHoy', true) + '>Sin actualizar</button>';
+  return '<button class="tag ok"' + clic('actualizarHoy', true) + '>' + haceCuanto(x.ts) + '</button>';
 }
 function rapidos() {
-  const A = CONFIG.APPS, a = (k, cls, ico, txt) => '<a class="rapido" href="' + esc(A[k]) + '" target="_blank" rel="noopener" onclick="return abrirApp(event,\'' + k + '\')"><span class="ic ' + cls + '">' + ico + '</span>' + txt + '</a>';
+  const A = CONFIG.APPS, a = (k, cls, ico, txt) => '<a class="rapido" href="' + esc(A[k]) + '" target="_blank" rel="noopener"' + clic('abrirApp', k) + '><span class="ic ' + cls + '">' + ico + '</span>' + txt + '</a>';
   return '<div class="rapidos">' + a('gym', 'gym', SVG.pesa, 'Abrir Gym') + a('finanzas', 'fin', SVG.grafica, 'Abrir Finanzas') + a('gasto', 'gasto', SVG.menos, 'Registrar gasto') +
-    '<button class="rapido" onclick="abrirGymComida()"><span class="ic com">' + SVG.mas + '</span>Registrar comida</button></div>';
+    '<button class="rapido"' + clic('abrirGymComida') + '><span class="ic com">' + SVG.mas + '</span>Registrar comida</button></div>';
 }
 function errorFuente(f) {
   const x = DATOS[f];
   if (x.d) return x.error ? '<div class="note red">No pude actualizar ' + FUENTES[f].nombre + ': ' + esc(x.error) + ' Te muestro lo último que leí (' + haceCuanto(x.ts) + ').</div>' : '';
   if (x.error) return '<div class="card"><div class="t1">No pude leer tu hoja de ' + FUENTES[f].nombre + '</div><p class="muted">' + esc(x.error) + '</p>' +
-    '<div class="btns"><button class="btn sm" onclick="actualizarHoy(true)">Reintentar</button><button class="btn sm ghost" onclick="abrirAjustes(\'conexion\')">Revisar conexión</button></div></div>';
+    '<div class="btns"><button class="btn sm"' + clic('actualizarHoy', true) + '>Reintentar</button><button class="btn sm ghost"' + clic('abrirAjustes', 'conexion') + '>Revisar conexión</button></div></div>';
   return '<div class="card empty">Leyendo tu hoja de ' + FUENTES[f].nombre + '…</div>';
 }
 // Línea pequeña con la tendencia (sin ejes: solo para ver hacia dónde va)
@@ -243,7 +264,7 @@ function seccionGym(k) {
     : g.ultimo ? 'Última vez: <b>' + g.ultimo + '</b>' + (g.ultimoFecha ? ' · ' + diaCorto(g.ultimoFecha) : '') + '. La rotación avanza solo cuando entrenas.' : 'La rotación avanza solo cuando entrenas.';
   h += '<div class="hero gym"><div class="lbl">' + lbl + '</div><div class="big">' + esc(g.grupo) + '<small>' + esc(g.nombre) + '</small></div><div class="of">' + linea + '</div>' +
     '<div class="pie"><div class="rot">' + CALC.GRUPOS3.map(n => '<span class="' + (n === g.grupo ? 'on' + (g.entreno ? ' hecho' : '') : '') + '">' + n + '</span>').join('') + '</div>' +
-    '<a class="btnh" href="' + esc(CONFIG.APPS.gym) + '" target="_blank" rel="noopener" onclick="return abrirApp(event,\'gym\')">' + (g.entreno || g.descansa ? 'Abrir Gym' : 'A entrenar') + ' ›</a></div></div>';
+    '<a class="btnh" href="' + esc(CONFIG.APPS.gym) + '" target="_blank" rel="noopener"' + clic('abrirApp', 'gym') + '>' + (g.entreno || g.descansa ? 'Abrir Gym' : 'A entrenar') + ' ›</a></div></div>';
   // Semana: días de gym, km de trote, peso y cintura
   const iHoy = (diaSemana(k) + 6) % 7, L = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   const prev = g.semanas.length >= 2 ? g.semanas[g.semanas.length - 2].km : null, ult = g.semanas.slice(-6), mx = Math.max.apply(null, ult.map(s => s.km).concat([1]));
@@ -308,7 +329,7 @@ function seccionFin(k) {
     return '<div class="cat"><div class="top2"><span class="nm">' + (ICONO_CAT[c.nombre] || '•') + ' ' + esc(c.nombre) + '</span><span class="num"><b>' + money(c.gastado, true) + '</b>' +
       (c.presupuesto ? ' <span class="muted">/ ' + money(c.presupuesto, true) + '</span>' : '') + '</span></div>' +
       (c.presupuesto ? '<div class="meter"><div class="' + clase(p) + '" style="width:' + Math.min(100, p * 100).toFixed(1) + '%"></div></div>' : '<div class="muted small">Sin presupuesto</div>') + '</div>';
-  }).join('') + (F.categorias.length > 6 ? '<div class="cat" style="text-align:center"><button class="link" onclick="VER_CATS=!VER_CATS;pintar()">' + (VER_CATS ? 'Ver menos' : 'Ver las ' + (F.categorias.length - 6) + ' restantes') + '</button></div>' : '') + '</div>';
+  }).join('') + (F.categorias.length > 6 ? '<div class="cat" style="text-align:center"><button class="link" ' + clic('verMasCats') + '>' + (VER_CATS ? 'Ver menos' : 'Ver las ' + (F.categorias.length - 6) + ' restantes') + '</button></div>' : '') + '</div>';
   // Personas: aparte, sin sumarlas al patrimonio
   const q = p => '<div class="qrow"><span>' + esc(p.nombre) + '</span><b>' + money(p.saldo, true) + '</b></div>';
   h += '<h2>Personas · aparte</h2><div class="card"><div class="cols">' +
@@ -372,8 +393,8 @@ window.addEventListener('popstate', () => {
   if (TAB !== 'hoy') { verTab('hoy'); ponerGuardia(); return; }
   if (NATIVO) { nativo('App', 'minimizeApp'); ponerGuardia(); } else history.back();
 });
-const cabeza = titulo => '<div class="grab"><h3 id="hojaTitulo">' + titulo + '</h3><button class="x" onclick="cerrarHoja()" aria-label="Cerrar">' + SVG.x + '</button></div>';
-const interruptor = (on, fn, titulo, sub) => '<button class="switch" role="switch" aria-checked="' + !!on + '" onclick="' + fn + '"><span><span class="t1" style="font-size:15px">' + titulo + '</span>' +
+const cabeza = titulo => '<div class="grab"><h3 id="hojaTitulo">' + titulo + '</h3><button class="x"' + clic('cerrarHoja') + ' aria-label="Cerrar">' + SVG.x + '</button></div>';
+const interruptor = (on, fn, titulo, sub) => '<button class="switch" role="switch" aria-checked="' + !!on + '"' + clic(fn) + '><span><span class="t1" style="font-size:15px">' + titulo + '</span>' +
   (sub ? '<br><span class="muted">' + sub + '</span>' : '') + '</span><span class="knob"></span></button>';
 
 /* ===================== Ajustes ===================== */
@@ -392,7 +413,7 @@ function hojaAjustes() {
   const tema = LS.get('pan_tema', 'auto'), m = metas(), rech = LS.get('pan_rechazados', []);
   let h = cabeza('Ajustes');
   h += '<div class="fl">Tema</div><div class="seg">' + [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']]
-    .map(([k, t]) => '<button class="' + (tema === k ? 'on' : '') + '" onclick="elegirTema(\'' + k + '\')">' + t + '</button>').join('') + '</div>';
+    .map(([k, t]) => '<button class="' + (tema === k ? 'on' : '') + '"' + clic('elegirTema', k) + '>' + t + '</button>').join('') + '</div>';
   // Metas de comida: las calcula Gym; mientras no lleguen, las de Panel
   h += '<div class="fl" id="aj-metas">Metas de comida por día</div>';
   if (m.deGym) h += '<div class="note"><b>' + fmt0(m.kcal) + ' kcal</b> · Proteína ' + Math.round(m.p) + ' g · Carbs ' + Math.round(m.c) + ' g · Grasa ' + Math.round(m.g) + ' g</div>' +
@@ -402,9 +423,9 @@ function hojaAjustes() {
       (m.mant && m.mantReal < m.mant - 300 ? ' (bastante menos que la fórmula: seguro algo no se está anotando).' : '.') + '</div>' : '');
   else h += '<div class="g4">' +
     [['kcal', 'kcal'], ['p', 'Proteína g'], ['c', 'Carbs g'], ['g', 'Grasa g']].map(([k, t]) =>
-      '<div><label for="m-' + k + '">' + t + '</label><input class="inp" id="m-' + k + '" type="number" inputmode="numeric" min="0" value="' + Math.round(m[k]) + '" oninput="sumaMetas()"></div>').join('') + '</div>' +
+      '<div><label for="m-' + k + '">' + t + '</label><input class="inp" id="m-' + k + '" type="number" inputmode="numeric" min="0" value="' + Math.round(m[k]) + '"' + alEscribir('sumaMetas') + '></div>').join('') + '</div>' +
     '<div class="hint" id="sumaMetas">' + textoSumaMetas(m) + '</div>' +
-    '<div class="btns" style="margin-top:10px"><button class="btn sm ghost" onclick="repartir()">Repartir el resto</button><button class="btn sm" onclick="guardarMetasForm()">Guardar metas</button></div>' +
+    '<div class="btns" style="margin-top:10px"><button class="btn sm ghost"' + clic('repartir') + '>Repartir el resto</button><button class="btn sm"' + clic('guardarMetasForm') + '>Guardar metas</button></div>' +
     '<div class="hint">Las metas las calcula tu app Gym; en cuanto Panel las lea, se usan esas. Mientras, estas.</div>';
   // Conexión
   const rep = urlsRepetidas();
@@ -414,19 +435,19 @@ function hojaAjustes() {
     '<div class="hint" style="margin:0 2px 10px">La URL va en <b>config.js</b> (o pégala aquí). La clave es la misma que pusiste en cada Apps Script y solo se guarda en este celular.</div>' +
     ['gym', 'fin', 'com'].map(bloqueConexion).join('');
   if (rech.length) h += '<div class="note red"><b>La hoja de Comidas no aceptó ' + rech.length + (rech.length === 1 ? ' cambio' : ' cambios') + ':</b><br>' +
-    rech.slice(-3).map(r => esc(r.cuando + ' · ' + r.msg)).join('<br>') + '<br><button class="link" style="color:inherit;padding:6px 0 0;min-height:0" onclick="LS.del(\'pan_rechazados\');refrescarHoja()">Entendido</button></div>';
+    rech.slice(-3).map(r => esc(r.cuando + ' · ' + r.msg)).join('<br>') + '<br><button class="link" style="color:inherit;padding:6px 0 0;min-height:0" ' + clic('entendidoRechazados') + '>Entendido</button></div>';
   // Comidas guardadas
   h += '<div class="fl" id="aj-guardadas">Platillos para el plan</div><div class="hint" style="margin:-4px 2px 8px">Lo que comes lo registras en Gym; estos solo sirven para armar tu plan semanal (además de lo que más comes).</div><div class="list">' + guardadasOrdenadas().map(g =>
-    '<button class="it" data-id="' + esc(g.id) + '" onclick="abrirEditorGuardada(this.dataset.id)"><div class="ic">' + esc(g.ico || '🍽️') + '</div><div class="tx"><div class="d1">' + esc(g.nombre) + (g.fav ? ' ⭐' : '') + '</div>' +
+    '<button class="it" data-id="' + esc(g.id) + '" ' + clic('abrirEditorGuardada', g.id) + '><div class="ic">' + esc(g.ico || '🍽️') + '</div><div class="tx"><div class="d1">' + esc(g.nombre) + (g.fav ? ' ⭐' : '') + '</div>' +
     '<div class="d2">' + esc(NOMBRE_COMIDA[g.comida] || '') + ' · ' + macrosTexto(g) + '</div></div><span class="muted">' + SVG.lapiz.replace('<svg', '<svg width="18" height="18"') + '</span></button>').join('') +
-    '<button class="it" onclick="abrirEditorGuardada()"><div class="ic">＋</div><div class="tx"><div class="d1">Nuevo platillo</div></div></button></div>';
+    '<button class="it"' + clic('abrirEditorGuardada') + '><div class="ic">＋</div><div class="tx"><div class="d1">Nuevo platillo</div></div></button></div>';
   // Datos
   const n = cola().length;
   h += '<div class="fl">Tus datos</div><div class="card flat" style="margin:0">' +
     '<div class="muted">Plan, metas y platillos: ' + (n ? n + (n === 1 ? ' cambio' : ' cambios') + (conectada('com') ? ' sin subir' : ' esperando a que conectes la hoja Comidas 2026') : 'todo subido') + '.' +
     (DB.registro.length ? ' Además tienes ' + DB.registro.length + ' comidas que registraste en Panel antes de pasar todo a Gym: se siguen sumando.' : '') + '</div>' +
-    '<div class="btns" style="margin-top:10px">' + (conectada('com') ? '<button class="btn sm ghost" onclick="sincronizar(true)">Subir ahora</button>' : '') +
-    '<button class="btn sm ghost" onclick="exportar()">Exportar respaldo</button></div></div>';
+    '<div class="btns" style="margin-top:10px">' + (conectada('com') ? '<button class="btn sm ghost"' + clic('sincronizar', true) + '>Subir ahora</button>' : '') +
+    '<button class="btn sm ghost"' + clic('exportar') + '>Exportar respaldo</button></div></div>';
   h += '<div class="hint" style="text-align:center;margin:18px 0 6px">Panel ' + VERSION_APP + ' · Gym, Finanzas y Comidas en un vistazo</div>';
   return h;
 }
@@ -442,9 +463,9 @@ function bloqueConexion(f) {
     (x && x.error && conectada(f) ? '<div class="muted small red" style="margin-top:4px">' + esc(x.error) + '</div>' : '') +
     '<input class="inp" id="u-' + f + '" placeholder="' + (deConfig ? 'Usando la URL de config.js' : 'https://script.google.com/macros/s/…/exec') + '" value="' + esc(c.url || '') + '" autocomplete="off" spellcheck="false" inputmode="url">' +
     '<input class="inp" id="k-' + f + '" type="password" placeholder="Clave" value="' + esc(c.clave || '') + '" autocomplete="off">' +
-    '<div class="btns" style="margin-top:10px"><button class="btn sm" onclick="probarConexion(\'' + f + '\')">Guardar y probar</button>' +
-    (c.url || c.clave ? '<button class="btn sm ghost" onclick="olvidarConexion(\'' + f + '\')">Quitar</button>' : '') + '</div>' +
-    (detecta ? '<button class="btn sm ghost block" style="margin-top:8px" onclick="usarDeApp(\'' + f + '\')">Usar la conexión de tu app ' + F.nombre + ' (la encontré en este Chrome)</button>' : '') + '</div>';
+    '<div class="btns" style="margin-top:10px"><button class="btn sm"' + clic('probarConexion', f) + '>Guardar y probar</button>' +
+    (c.url || c.clave ? '<button class="btn sm ghost"' + clic('olvidarConexion', f) + '>Quitar</button>' : '') + '</div>' +
+    (detecta ? '<button class="btn sm ghost block" style="margin-top:8px"' + clic('usarDeApp', f) + '>Usar la conexión de tu app ' + F.nombre + ' (la encontré en este Chrome)</button>' : '') + '</div>';
 }
 async function probarConexion(f) {
   const u = $('u-' + f).value.trim(), k = $('k-' + f).value.trim();

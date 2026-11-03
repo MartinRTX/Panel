@@ -210,7 +210,7 @@ function registroTodo() {
 const hayGym = () => conectada('gym') && !DATOS.gym.ejemplo;
 // Registrar: en tu app Gym (en el APK abre directo su pestaña Comida)
 function abrirGymComida() {
-  if (NATIVO) return abrirApp(null, 'comida');
+  if (NATIVO) return abrirApp('comida');
   try { window.open(CONFIG.APPS.gym, '_blank', 'noopener'); } catch (e) { location.href = CONFIG.APPS.gym; }
 }
 // Lo de antes que registraste en Panel: solo se puede quitar (lo nuevo va en Gym)
@@ -234,15 +234,20 @@ LS.del('pan_metas_gym');
 /* ===================== Pantalla Comidas ===================== */
 function pintarComidas() {
   let h = '<div class="seg" role="tablist">' + [['dia', 'Día'], ['semana', 'Plan semanal'], ['resumen', 'Resumen']]
-    .map(([k, t]) => '<button role="tab" aria-selected="' + (SUB === k) + '" class="' + (SUB === k ? 'on' : '') + '" onclick="verSub(\'' + k + '\')">' + t + '</button>').join('') + '</div>';
+    .map(([k, t]) => '<button role="tab" aria-selected="' + (SUB === k) + '" class="' + (SUB === k ? 'on' : '') + '"' + clic('verSub', k) + '>' + t + '</button>').join('') + '</div>';
   if (!hayGym()) h += '<div class="note info">Lo que comes se registra en tu app <b>Gym</b> y aquí lo ves con tus metas, tu plan y tu resumen. ' +
     'Para eso conecta Gym (engrane › Conexión).</div>';
   else if (COMGYM_ERROR === 'sin-panel-gs' && !LS.get('pan_aviso_panelgs', false)) h += '<div class="note">Solo veo hoy y ayer de tu app Gym. Para ver tus semanas completas, ' +
     'tu script de Gym tiene que ser la versión 8.1 o más nueva (se publica solo desde GitHub; no pegues nada a mano). <button class="link" style="padding:4px 0 0;min-height:0;color:inherit;text-decoration:underline" ' +
-    'onclick="LS.set(\'pan_aviso_panelgs\',true);pintar()">Entendido</button></div>';
+    clic('entendidoAvisoPanelGs') + '>Entendido</button></div>';
   else if (COMGYM_ERROR && COMGYM_ERROR !== 'sin-panel-gs') h += '<div class="note red">No pude leer tus comidas de Gym: ' + esc(COMGYM_ERROR) + '</div>';
   return h + (SUB === 'semana' ? vistaSemana() : SUB === 'resumen' ? vistaResumen() : vistaDia());
 }
+function entendidoAvisoPanelGs() { LS.set('pan_aviso_panelgs', true); pintar(); }
+// Editor de comida guardada: lo que escribes se queda en ED (sin repintar, para no quitarte el teclado)
+function edCampo(k, v) { if (['ico', 'nombre', 'detalle', 'kcal', 'p', 'c', 'g'].includes(k)) ED[k] = v; }
+function edComida(k) { ED.comida = k; refrescarHoja(); }
+function edFav() { ED.fav = !ED.fav; refrescarHoja(); }
 function verSub(k) { SUB = k; LS.set('pan_sub', k); pintar(true); vibrar(6); }
 
 /* ----- Día ----- */
@@ -270,7 +275,7 @@ function tarjetaMacros(f, conTexto) {
 // En Hoy: cómo vas con la comida (lo de Gym contra tus metas); tocarla abre Comidas
 function tarjetaComidaHoy(k) {
   if (!hayGym() && !DB.registro.some(r => r.fecha === k)) return '';
-  return '<div class="card" role="button" tabindex="0" onclick="verTab(\'comidas\')" style="cursor:pointer"><div class="row between" style="margin-bottom:8px"><div class="t1">🍽️ Comida de hoy</div>' +
+  return '<div class="card" role="button" tabindex="0" ' + clic('verTab', 'comidas') + ' style="cursor:pointer"><div class="row between" style="margin-bottom:8px"><div class="t1">🍽️ Comida de hoy</div>' +
     '<span class="muted">Ver ›</span></div>' + tarjetaMacros(k) + '</div>';
 }
 const mismoNombre = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -282,11 +287,11 @@ function planHecho(p, items) {
 }
 function vistaDia() {
   const f = DIA || hoy(), reg = registroTodo(), t = CALC.totalesDia(reg, f), desde = sumarDias(hoy(), -(DIAS_GYM - 1));
-  let h = '<div class="daynav"><button class="arrow" onclick="moverDia(-1)" aria-label="Día anterior"' + (f <= desde ? ' disabled' : '') + '>' + SVG.izq + '</button>' +
+  let h = '<div class="daynav"><button class="arrow"' + clic('moverDia', -1) + ' aria-label="Día anterior"' + (f <= desde ? ' disabled' : '') + '>' + SVG.izq + '</button>' +
     '<div class="nm">' + diaRelativo(f) + '<small>' + (f === hoy() ? fechaLarga(f) : diaCorto(f)) + '</small></div>' +
-    '<button class="arrow" onclick="moverDia(1)" aria-label="Día siguiente"' + (f >= hoy() ? ' disabled' : '') + '>' + SVG.der + '</button></div>';
+    '<button class="arrow"' + clic('moverDia', 1) + ' aria-label="Día siguiente"' + (f >= hoy() ? ' disabled' : '') + '>' + SVG.der + '</button></div>';
   h += '<div class="card">' + tarjetaMacros(f) + '</div>';
-  if (f === hoy()) h += '<button class="btn com block" style="margin-bottom:12px" onclick="abrirGymComida()">＋ Registrar en Gym</button>';
+  if (f === hoy()) h += '<button class="btn com block" style="margin-bottom:12px"' + clic('abrirGymComida') + '>＋ Registrar en Gym</button>';
   // El plan de ese día: qué ya comiste y qué falta
   const plan = DB.plan.filter(p => p.fecha === f).sort((a, b) => ordenComida(a.comida) - ordenComida(b.comida)), delDia = reg.filter(r => r.fecha === f);
   if (plan.length) h += '<div class="fl" style="margin-top:4px">Tu plan de ' + (f === hoy() ? 'hoy' : 'ese día') + '</div><div class="card flat" style="padding:6px 14px">' + plan.map(p => {
@@ -301,7 +306,7 @@ function vistaDia() {
       items.map(r => '<div class="it"><div class="ic">' + (r.origen === 'gym' ? '🏋️' : '📱') + '</div><div class="tx"><div class="d1">' + esc(r.nombre) +
         (Number(r.porcion) !== 1 ? ' <span class="muted">×' + fmt1(r.porcion) + '</span>' : '') + '</div><div class="d2">' +
         (r.sinMacros ? '<span class="mac"><i class="p">P ' + r0(r.p) + '</i> · solo proteína</span>' : macrosHtml(r)) + (r.hora ? ' · ' + esc(r.hora) : '') + (r.origen === 'panel' ? ' · de Panel' : '') + '</div></div>' +
-        (r.origen === 'panel' ? '<button class="x" data-id="' + esc(r.id) + '" onclick="borrarRegistro(this.dataset.id)" aria-label="Quitar ' + esc(r.nombre) + '">' + SVG.x + '</button>' : '') + '</div>').join('') + '</div>';
+        (r.origen === 'panel' ? '<button class="x" data-id="' + esc(r.id) + '" ' + clic('borrarRegistro', r.id) + ' aria-label="Quitar ' + esc(r.nombre) + '">' + SVG.x + '</button>' : '') + '</div>').join('') + '</div>';
   });
   if (!t.n) h += '<div class="card empty">' + (hayGym() ? 'Nada registrado ' + (f === hoy() ? 'hoy' : 'ese día') + '. Lo que anotes en Gym aparece aquí.' : 'Conecta Gym para ver lo que comes.') + '</div>';
   return h;
@@ -324,15 +329,15 @@ function abrirEditorGuardada(id) {
 }
 function hojaEditorGuardada() {
   let h = cabeza(ED.nueva ? 'Nueva comida guardada' : 'Editar comida guardada');
-  h += '<div class="fl">Nombre</div><div class="row"><input class="inp" style="width:64px;text-align:center;font-size:22px;padding:8px" value="' + esc(ED.ico) + '" oninput="ED.ico=this.value" maxlength="4" aria-label="Ícono">' +
-    '<input class="inp" value="' + esc(ED.nombre) + '" placeholder="p. ej. Avena con plátano" oninput="ED.nombre=this.value" maxlength="80"></div>';
-  h += '<div class="fl">Normalmente es</div><div class="pick">' + CALC.COMIDAS.map(([k, n, i]) => '<button class="' + (ED.comida === k ? 'on' : '') + '" onclick="ED.comida=\'' + k + '\';refrescarHoja()">' + i + ' ' + n + '</button>').join('') + '</div>';
+  h += '<div class="fl">Nombre</div><div class="row"><input class="inp" style="width:64px;text-align:center;font-size:22px;padding:8px" value="' + esc(ED.ico) + '" ' + alEscribir('edCampo', 'ico') + ' maxlength="4" aria-label="Ícono">' +
+    '<input class="inp" value="' + esc(ED.nombre) + '" placeholder="p. ej. Avena con plátano" ' + alEscribir('edCampo', 'nombre') + ' maxlength="80"></div>';
+  h += '<div class="fl">Normalmente es</div><div class="pick">' + CALC.COMIDAS.map(([k, n, i]) => '<button class="' + (ED.comida === k ? 'on' : '') + '" ' + clic('edComida', k) + '>' + i + ' ' + n + '</button>').join('') + '</div>';
   h += '<div class="fl">Por porción</div><div class="g4">' + [['kcal', 'kcal'], ['p', 'Prot. g'], ['c', 'Carbs g'], ['g', 'Grasa g']].map(([k, t]) =>
-    '<div><label>' + t + '</label><input class="inp" type="number" inputmode="decimal" min="0" step="any" value="' + esc(ED[k]) + '" oninput="ED.' + k + '=this.value"></div>').join('') + '</div>';
-  h += '<div class="fl">Qué lleva (opcional)</div><input class="inp" value="' + esc(ED.detalle) + '" placeholder="Ingredientes o cantidades" oninput="ED.detalle=this.value" maxlength="200">';
-  h += interruptor(ED.fav, 'ED.fav=!ED.fav;refrescarHoja()', 'Favorita ⭐', 'Sale como botón de un toque en ' + NOMBRE_COMIDA[ED.comida].toLowerCase());
-  return h + '<div class="actbar">' + (ED.nueva ? '<button class="btn ghost" onclick="volverDeEditor()">Cancelar</button>' : '<button class="btn danger" onclick="borrarGuardada()">Borrar</button>') +
-    '<button class="btn" onclick="guardarGuardadaForm()">Guardar</button></div>';
+    '<div><label>' + t + '</label><input class="inp" type="number" inputmode="decimal" min="0" step="any" value="' + esc(ED[k]) + '" ' + alEscribir('edCampo', k) + '></div>').join('') + '</div>';
+  h += '<div class="fl">Qué lleva (opcional)</div><input class="inp" value="' + esc(ED.detalle) + '" placeholder="Ingredientes o cantidades" ' + alEscribir('edCampo', 'detalle') + ' maxlength="200">';
+  h += interruptor(ED.fav, 'edFav', 'Favorita ⭐', 'Sale como botón de un toque en ' + NOMBRE_COMIDA[ED.comida].toLowerCase());
+  return h + '<div class="actbar">' + (ED.nueva ? '<button class="btn ghost"' + clic('volverDeEditor') + '>Cancelar</button>' : '<button class="btn danger"' + clic('borrarGuardada') + '>Borrar</button>') +
+    '<button class="btn"' + clic('guardarGuardadaForm') + '>Guardar</button></div>';
 }
 function volverDeEditor() { if (ED && ED.volver) { HOJA_FN = ED.volver; refrescarHoja(); } else cerrarHoja(); }
 function guardarGuardadaForm() {
@@ -360,10 +365,10 @@ const MAMA_PLAN = () => Object.assign({ gid: 'casera', nombre: 'Comida de mamá 
 const frecuentes = () => CALC.frecuentes(registroTodo(), 20);
 function vistaSemana() {
   const lunes = SEM || lunesDe(hoy()), m = metas(), n = difDias(lunesDe(hoy()), lunes) / 7;
-  let h = '<div class="daynav"><button class="arrow" onclick="moverSemana(-1)" aria-label="Semana anterior">' + SVG.izq + '</button><div class="nm">' +
+  let h = '<div class="daynav"><button class="arrow"' + clic('moverSemana', -1) + ' aria-label="Semana anterior">' + SVG.izq + '</button><div class="nm">' +
     (n === 0 ? 'Esta semana' : n === 1 ? 'La próxima semana' : n === -1 ? 'La semana pasada' : 'Semana del ' + diaCorto(lunes)) + '<small>' + diaCorto(lunes) + ' – ' + diaCorto(sumarDias(lunes, 6)) + '</small></div>' +
-    '<button class="arrow" onclick="moverSemana(1)" aria-label="Semana siguiente">' + SVG.der + '</button></div>';
-  h += '<div class="btns" style="margin-bottom:12px"><button class="btn sm ghost" onclick="llenarSiempre()">Llenar con lo de siempre</button><button class="btn sm ghost" onclick="copiarSemana()">Copiar la anterior</button></div>';
+    '<button class="arrow"' + clic('moverSemana', 1) + ' aria-label="Semana siguiente">' + SVG.der + '</button></div>';
+  h += '<div class="btns" style="margin-bottom:12px"><button class="btn sm ghost"' + clic('llenarSiempre') + '>Llenar con lo de siempre</button><button class="btn sm ghost"' + clic('copiarSemana') + '>Copiar la anterior</button></div>';
   const reg = registroTodo();
   for (let i = 0; i < 7; i++) {
     const f = sumarDias(lunes, i), items = DB.plan.filter(p => p.fecha === f), t = CALC.sumar(items), d = fechaDe(f), comido = reg.filter(r => r.fecha === f);
@@ -371,7 +376,7 @@ function vistaSemana() {
       '<div class="muted mac">' + (items.length ? fmt0(t.kcal) + ' / ' + fmt0(m.kcal) + ' kcal · <i class="p">' + r0(t.p) + ' g P</i>' : 'Sin plan') + '</div></div>' +
       CALC.COMIDAS.map(([k, nombre]) => {
         const p = items.find(x => x.comida === k), ok = p && f <= hoy() && planHecho(p, comido) === 'si';
-        return '<button class="slot" onclick="elegirPlan(\'' + f + '\',\'' + k + '\')"><span class="k">' + nombre + '</span><span class="n' + (p ? '' : ' vacio') + '">' +
+        return '<button class="slot"' + clic('elegirPlan', f, k) + '><span class="k">' + nombre + '</span><span class="n' + (p ? '' : ' vacio') + '">' +
           (p ? esc((p.ico || '') + ' ' + p.nombre) : '+ Elegir') + '</span>' + (p ? '<span class="kc">' + (ok ? '<b class="green">✓</b> ' : '') + fmt0(p.kcal) + ' kcal</span>' : '') + '</button>';
       }).join('') + '</div>';
   }
@@ -382,7 +387,7 @@ let PL = null;
 function elegirPlan(f, k) { PL = { f, k, frec: frecuentes() }; abrirHoja(hojaPlan); }
 function hojaPlan() {
   const actual = DB.plan.find(p => p.id === idPlan(PL.f, PL.k)), marca = id => actual && actual.gid === id ? ' ✓' : '';
-  const fila = (id, ico, nombre, sub) => '<button class="it" data-id="' + esc(id) + '" onclick="ponerPlan(this.dataset.id)"><div class="ic">' + esc(ico) + '</div>' +
+  const fila = (id, ico, nombre, sub) => '<button class="it" data-id="' + esc(id) + '" ' + clic('ponerPlan', id) + '><div class="ic">' + esc(ico) + '</div>' +
     '<div class="tx"><div class="d1">' + esc(nombre) + marca(id) + '</div><div class="d2">' + sub + '</div></div></button>';
   const frec = PL.frec.slice().sort((a, b) => (b.comida === PL.k) - (a.comida === PL.k) || b.n - a.n);
   let h = cabeza(NOMBRE_COMIDA[PL.k] + ' · ' + diaCorto(PL.f));
@@ -390,7 +395,7 @@ function hojaPlan() {
     frec.map(x => fila(x.id, '🏋️', x.nombre, macrosHtml(x) + ' · ' + x.n + (x.n === 1 ? ' vez' : ' veces'))).join('') + '</div>';
   h += '<div class="fl">Tus platillos</div><div class="list">' + guardadasOrdenadas(PL.k).map(g => fila(g.id, g.ico || '🍽️', g.nombre, macrosHtml(g))).join('') +
     fila('casera', '🍲', 'Comida de mamá (aprox.)', 'Cambia cada día: cuenta un plato normal') + '</div>';
-  if (actual) h += '<button class="btn danger block" onclick="quitarPlan()">Quitar del plan</button>';
+  if (actual) h += '<button class="btn danger block"' + clic('quitarPlan') + '>Quitar del plan</button>';
   return h;
 }
 function planDe(gid, f, k, frec) {
@@ -433,9 +438,9 @@ function copiarSemana() {
 /* ----- Resumen semanal ----- */
 function vistaResumen() {
   const lunes = SEM_RES || lunesDe(hoy()), m = metas(), R = CALC.resumenSemana(registroTodo(), lunes, m, hoy()), n = difDias(lunesDe(hoy()), lunes) / 7;
-  let h = '<div class="daynav"><button class="arrow" onclick="moverResumen(-1)" aria-label="Semana anterior">' + SVG.izq + '</button><div class="nm">' +
+  let h = '<div class="daynav"><button class="arrow"' + clic('moverResumen', -1) + ' aria-label="Semana anterior">' + SVG.izq + '</button><div class="nm">' +
     (n === 0 ? 'Esta semana' : n === -1 ? 'La semana pasada' : 'Semana del ' + diaCorto(lunes)) + '<small>' + diaCorto(lunes) + ' – ' + diaCorto(sumarDias(lunes, 6)) + '</small></div>' +
-    '<button class="arrow" onclick="moverResumen(1)" aria-label="Semana siguiente"' + (n >= 0 ? ' disabled' : '') + '>' + SVG.der + '</button></div>';
+    '<button class="arrow"' + clic('moverResumen', 1) + ' aria-label="Semana siguiente"' + (n >= 0 ? ' disabled' : '') + '>' + SVG.der + '</button></div>';
   if (!R.diasConRegistro) return h + '<div class="card empty">' + (n !== 0 ? 'Esa semana no tiene comidas registradas.' : R.hoy
     ? 'Hoy llevas ' + fmt0(R.hoy.kcal) + ' kcal y ' + r0(R.hoy.p) + ' g de proteína. Los promedios cuentan los días completos: empiezan mañana.'
     : (hayGym() ? 'Esta semana aún no registras comidas en Gym. En cuanto anotes algo, aquí ves tus promedios.' : 'Conecta Gym para ver tus promedios.')) + '</div>';
