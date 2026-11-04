@@ -195,3 +195,68 @@ test('semana de carrera igual que Gym: descarga de lunes a la carrera, víspera 
   assert.strictEqual(CALC.gymHoy(d, '2026-11-17', 4, { fecha: '2026-12-01' }).carrera.fecha, '2026-11-21');
   assert.strictEqual(CALC.gymHoy(Object.assign({}, d, { carrera: null }), '2026-11-17', 4, { fecha: '2026-12-01', nombre: 'X' }).carrera.fecha, '2026-12-01');
 });
+
+/* ----- Semana: revisión, objetivos y hábitos ----- */
+const LUN = '2026-10-26', DOM = '2026-11-01';
+test('ddmmEn: la semana de Gym (dd/mm) cae entre lunes y domingo, también al cambiar de año', () => {
+  assert.ok(CALC.ddmmEn('26/10', LUN));
+  assert.ok(CALC.ddmmEn('01/11', LUN));
+  assert.ok(!CALC.ddmmEn('02/11', LUN));
+  assert.ok(CALC.ddmmEn('02/01', '2026-12-28'));
+  assert.ok(!CALC.ddmmEn('basura', LUN));
+});
+
+test('semanaGym: días por semana del script, km, peso y cintura con su cambio, y récords de esa semana', () => {
+  const d = { todayKey: '2026-11-04', resumen: { diasSemanas: [{ l: '2026-10-19', n: 3 }, { l: LUN, n: 4 }], diasSemana: 1, semana: [true],
+      records: [{ ej: 'Press banca', k: '2026-10-28' }, { ej: 'Sentadilla', k: '2026-10-20' }] },
+    trotes: { semanas: [{ d: '19/10', km: 8 }, { d: '26/10', km: 12.34 }, { d: '02/11', km: 3 }] },
+    cuerpo: { serie: [{ d: '18/10', peso: 80, cint: 91 }, { d: '25/10', peso: null, cint: null }, { d: '01/11', peso: 79.4, cint: 90 }] } };
+  const g = CALC.semanaGym(d, LUN, 4);
+  assert.deepStrictEqual([g.dias, g.km, g.kmAntes, g.peso.v, g.peso.cambio, g.cintura.v, g.cintura.cambio], [4, 12.3, 8, 79.4, -0.6, 90, -1]);
+  assert.deepStrictEqual(g.records.map(x => x.ej), ['Press banca']);
+  // Esta semana sin diasSemanas para ella: la del resumen. Semana sin nada: null (no 0)
+  assert.strictEqual(CALC.semanaGym(Object.assign({}, d, { resumen: { diasSemana: 1 } }), '2026-11-02').dias, 1);
+  assert.strictEqual(CALC.semanaGym(d, '2026-10-05').dias, null);
+  // Script viejo (sin diasSemanas): lo que Panel fue anotando
+  assert.strictEqual(CALC.semanaGym({ todayKey: '2026-11-04', resumen: {} }, LUN, 4, { [LUN]: 3 }).dias, 3);
+});
+
+test('gastoSemana: gastos menos reembolsos por categoría, semana anterior y promedio de 4 semanas', () => {
+  const m = (fecha, tipo, monto, categoria) => ({ fecha, tipo, monto, categoria, cuenta: 'BBVA' });
+  const d = { movs: [m('2026-10-26', 'Gasto', 300, 'Salidas'), m('2026-10-28', 'Gasto', 500, 'Gasolina'), m('2026-10-30', 'Reembolso', 100, 'Salidas'),
+    m('2026-11-01', 'Ingreso', 9000, 'Sueldo'), m('2026-11-02', 'Gasto', 999, 'Salidas'),
+    m('2026-10-20', 'Gasto', 600, 'Salidas'), m('2026-10-13', 'Gasto', 1000, 'Gasolina')] };
+  const g = CALC.gastoSemana(d, LUN);
+  assert.strictEqual(g.total, 700);
+  assert.deepStrictEqual(g.cats, [{ nombre: 'Gasolina', gastado: 500 }, { nombre: 'Salidas', gastado: 200 }]);
+  assert.strictEqual(g.antes, 600);
+  assert.strictEqual(g.prom4, 800);     // solo las 2 semanas que tienen algo registrado
+  assert.strictEqual(CALC.gastoSemana(d, '2026-10-12').antes, null);   // la semana anterior no tiene nada: no se compara
+});
+
+test('resumenHabitos: cuenta solo hasta hoy; sueño y ánimo promedian lo que marcaste', () => {
+  const h = (fecha, agua, sueno, animo, extras) => ({ fecha, agua, sueno, animo, extras: extras || [] });
+  const hs = [h(LUN, true, 7.5, 4, ['Leer']), h('2026-10-27', false, 6, null), h('2026-10-28', true, null, 2, ['Leer', 'Sin refresco']), h('2026-10-30', true, 8, 5)];
+  const r = CALC.resumenHabitos(hs, LUN, '2026-10-28');
+  assert.deepStrictEqual([r.transcurridos, r.marcados, r.agua, r.suenoProm, r.noches7, r.animoProm], [3, 3, 2, 6.8, 1, 3]);
+  assert.deepStrictEqual(r.extras, { Leer: 2, 'Sin refresco': 1 });
+  assert.strictEqual(CALC.resumenHabitos(hs, LUN, '2026-11-09').transcurridos, 7);
+});
+
+test('progresoObjetivo: llegar a la meta; gasto se cumple quedándote abajo; en curso no falla todavía', () => {
+  const ctx = { gym: { dias: 3, km: 12.34 }, gasto: { total: 1800 }, habitos: { agua: 5, noches7: 2 }, comida: { cumpleAmbas: 2, hoy: { cumple: { ambas: true } } } };
+  const P = (tipo, meta, fin, extra) => CALC.progresoObjetivo(Object.assign({ tipo, meta }, extra || {}), ctx, fin);
+  assert.deepStrictEqual([P('gym', 4).logrado, P('gym', 4, true).logrado, P('gym', 3).logrado], [null, false, true]);
+  assert.strictEqual(P('km', 10).valor, 12.3);
+  assert.strictEqual(P('comida', 3).logrado, true);       // 2 días completos + hoy que ya cumples
+  assert.deepStrictEqual([P('gasto', 2000).logrado, P('gasto', 2000, true).logrado, P('gasto', 1500).logrado, P('gasto', 1500).pasado], [null, true, false, true]);
+  assert.deepStrictEqual([P('libre', 0, false, { hecho: true }).logrado, P('libre', 0, true).logrado], [true, false]);
+  assert.strictEqual(CALC.progresoObjetivo({ tipo: 'gym', meta: 4 }, {}, true).logrado, null);    // sin datos: ni sí ni no
+});
+
+test('sugerirMeta: con lo de la semana pasada', () => {
+  assert.strictEqual(CALC.sugerirMeta('gym', {}, 4), 4);
+  assert.strictEqual(CALC.sugerirMeta('km', { gym: { km: 11.2 } }), 12);
+  assert.strictEqual(CALC.sugerirMeta('gasto', { gasto: { prom4: 2345, total: 9000 } }), 2100);
+  assert.strictEqual(CALC.sugerirMeta('gasto', {}), 2000);
+});

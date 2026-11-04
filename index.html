@@ -289,6 +289,38 @@
   .dsem { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 11.5px; color: var(--muted); font-weight: 650; }
   .dsem b { display: block; font-size: 11px; color: var(--prot); font-variant-numeric: tabular-nums; }
 
+  /* Hábitos del día y objetivos de la semana (semana.js) */
+  .hab .habrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .hab .habrow > span { font-weight: 650; font-size: 14.5px; white-space: nowrap; }
+  .hab .habrow small { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: 2px; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { min-width: 38px; min-height: 40px; padding: 6px 9px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); font-size: 14px; font-weight: 650; line-height: 1; }
+  .chip.on { background: var(--pri-weak); color: var(--pri); border-color: var(--pri); box-shadow: inset 0 0 0 1px var(--pri); }
+  .chip:active { transform: scale(.95); }
+  .chips.extras { justify-content: flex-start; padding-top: 9px; border-top: 1px solid var(--line); margin-top: 2px; }
+  .chip.mas { border-style: dashed; background: var(--card); color: var(--pri); }
+  .seg.mini { display: flex; margin: 0; padding: 3px; border-radius: 13px; gap: 2px; }
+  .seg.mini .chip { border: 0; background: none; min-height: 34px; padding: 4px 12px; color: var(--muted); box-shadow: none; }
+  .seg.mini .chip.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  .obj { padding: 8px 0 2px; border-top: 1px solid var(--line); margin-top: 8px; }
+  .obj .top2, .objlibre { display: flex; justify-content: space-between; gap: 8px; font-size: 14.5px; font-weight: 600; align-items: baseline; }
+  .obj .top2 b, .objlibre b { white-space: nowrap; font-size: 13.5px; }
+  .objlibre { width: 100%; background: none; border: 0; padding: 4px 0; min-height: 40px; text-align: left; align-items: center; }
+  .objlibre[aria-pressed=true] span { text-decoration: line-through; opacity: .7; }
+  .meter.obj { height: 7px; margin: 6px 0 4px; }
+  .meter.obj > div { background: var(--pri); }
+  .meter.obj > div.ok { background: var(--ok); }
+  .meter.obj > div.warn { background: var(--sun-bar); }
+  .meter.obj > div.over { background: var(--bad); }
+  .obj .quitar { padding: 0; min-height: 32px; font-size: 13px; color: var(--bad); }
+  button.card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; }
+  .card.revision { background: linear-gradient(135deg, var(--pri-weak), var(--card) 75%); border-color: color-mix(in srgb, var(--pri) 45%, var(--line)); }
+  .card.revision .ic { font-size: 28px; flex: none; }
+  .card.revision .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .card.objvacio { justify-content: space-between; font-weight: 650; min-height: 56px; }
+  .balance ul { margin: 6px 0 0; padding-left: 20px; }
+  .balance li { margin: 3px 0; font-size: 14.5px; }
+
   /* Navegación: barra flotante con el botón de agregar comida al centro */
   nav.tabs { position: fixed; left: 0; right: 0; bottom: calc(10px + var(--sab)); margin: 0 auto; width: calc(100% - 24px); max-width: 420px; height: var(--nav-h); border-radius: 24px;
              background: var(--nav-bg); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); border: 1px solid var(--line);
@@ -341,6 +373,7 @@
   .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
   .toast button { background: none; border: 0; color: var(--pri-2); font-weight: 800; padding: 10px 0; min-height: 44px; }
   @media (prefers-reduced-motion: reduce) { .sheet, .scrim, .toast, .switch .knob, .switch .knob::after, .meter > div, .mb .bar div { transition: none; } #view.anima > * { animation: none; } }
+  @media (max-width: 400px) { .hab .habrow small { display: none; } .chip { min-width: 34px; padding: 6px 7px; } .chips { gap: 4px; } }
   @media (max-width: 360px) { .rapidos { grid-template-columns: repeat(2, 1fr); } .hero .big { font-size: 38px; } .anillo { width: 112px; height: 112px; } }
 </style>
 </head>
@@ -369,5 +402,7 @@
 <script src="ejemplo.js"></script>
 <script src="app.js"></script>
 <script src="comidas.js"></script>
+<script src="semana.js"></script>
+<script src="avisos.js"></script>
 </body>
 </html>

@@ -1,10 +1,11 @@
 /* Panel v1 – el tablero de Martin (app instalable, como Gym y Finanzas).
- * Hoy: lo de tu hoja de Gym y de Finanzas, solo para ver. Lee los MISMOS Apps Script que usan esas apps (acción "data").
+ * Hoy: tus hábitos y objetivos de la semana (semana.js) y lo de tu hoja de Gym y de Finanzas, solo para ver.
+ * Lee los MISMOS Apps Script que usan esas apps (acción "data"). La revisión de la semana y los avisos: semana.js y avisos.js.
  * Comidas (comidas.js): registro, metas, comidas guardadas, plan y resumen. Se guarda primero en el celular y
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.6';
+const VERSION_APP = '1.7';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -21,11 +22,12 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 // Un solo listener por evento las corre, y solo si están en ACCIONES (un data-click metido en un texto no hace nada).
 const clic = (fn, ...args) => ' data-click="' + fn + '"' + (args.length ? ' data-args="' + esc(JSON.stringify(args)) + '"' : '');
 const alEscribir = (fn, ...args) => ' data-input="' + fn + '"' + (args.length ? ' data-args="' + esc(JSON.stringify(args)) + '"' : '');
-const ACCIONES = new Set(['abrirAjustes', 'abrirApp', 'abrirEditorGuardada', 'abrirGymComida', 'accionToast', 'actualizarHoy', 'borrarGuardada',
-  'borrarRegistro', 'cerrarHoja', 'copiarSemana', 'edCampo', 'edComida', 'edFav', 'elegirPlan', 'elegirTema', 'entendidoAvisoPanelGs',
-  'entendidoRechazados', 'exportar', 'guardarGuardadaForm', 'guardarMetasForm', 'llenarSiempre', 'moverDia', 'moverResumen', 'moverSemana',
-  'olvidarConexion', 'ponerPlan', 'probarConexion', 'quitarPlan', 'repartir', 'sincronizar', 'sumaMetas', 'tocarSync', 'usarDeApp',
-  'verMasCats', 'verSub', 'verTab', 'volverDeEditor']);
+const ACCIONES = new Set(['abrirAjustes', 'abrirApp', 'abrirEditorGuardada', 'abrirGymComida', 'abrirRevision', 'accionToast', 'activarAvisos', 'actualizarHoy',
+  'agregarHabExtra', 'borrarGuardada', 'borrarRegistro', 'cambiarAviso', 'cerrarHoja', 'copiarSemana', 'edCampo', 'edComida', 'edFav', 'elegirPlan', 'elegirTema',
+  'entendidoAvisoPanelGs', 'entendidoRechazados', 'exportar', 'guardarGuardadaForm', 'guardarMetasForm', 'guardarNuevoObjetivo', 'habAgua', 'habAnimo',
+  'habExtra', 'habSueno', 'llenarSiempre', 'marcarLibre', 'moverDia', 'moverResumen', 'moverRevision', 'moverSemana', 'noCampo', 'noPaso', 'nuevoObjetivo',
+  'olvidarConexion', 'ponerPlan', 'probarConexion', 'quitarHabExtra', 'quitarObjetivo', 'quitarPlan', 'repartir', 'sincronizar', 'sumaMetas', 'tocarSync',
+  'usarDeApp', 'verHabDia', 'verMasCats', 'verSub', 'verTab', 'volverARevision', 'volverDeEditor']);
 function correrAccion(el, attr, e, extra) {
   const fn = el.getAttribute(attr);
   if (!ACCIONES.has(fn) || typeof window[fn] !== 'function') return;
@@ -151,7 +153,8 @@ const toma = (o, ks) => { const x = {}; if (o) ks.forEach(k => { if (o[k] !== un
 // Solo lo que usa Hoy (para no llenar el celular con el catálogo de ejercicios o el historial)
 function recortarGym(d) {
   return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso', 'comidasDias', 'macros7']), {
-    resumen: toma(d.resumen, ['semana', 'diasSemana', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7']),
+    resumen: Object.assign(toma(d.resumen, ['semana', 'diasSemana', 'diasSemanas', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7']),
+      { records: ((d.resumen || {}).records || []).map(r => toma(r, ['ej', 'k', 'w', 'r', 'unit', 'tipo'])) }),
     trotes: toma(d.trotes, ['semanas', 'km7']), cuerpo: toma(d.cuerpo, ['serie', 'actual', 'meta', 'base']),
     descargaCarrera: !!d.descargaCarrera, carrera: d.carrera && d.carrera.fecha ? toma(d.carrera, ['fecha', 'nombre', 'km']) : null });
 }
@@ -188,8 +191,10 @@ async function actualizarFuente(f, avisar) {
     const d = await llamar(f, { action: 'data', args: [] });
     revisarScript(f, d);
     const rec = f === 'gym' ? recortarGym(d) : recortarFin(d), ts = Date.now();
+    if (f === 'gym') anotarSemanaGym(rec);
     LS.set('pan_' + f, { d: rec, ts });
     DATOS[f] = { d: rec, ts, ejemplo: false, error: null };
+    if (typeof programarAvisos === 'function') programarAvisos();
   } catch (e) {
     DATOS[f] = Object.assign({}, DATOS[f], { error: mensajeError(e) });
     if (avisar) toast(FUENTES[f].nombre + ': ' + mensajeError(e));
@@ -216,6 +221,7 @@ function pintarHoy() {
   if (rep.length) h += '<div class="note red" style="margin-top:12px"><b>' + rep.join(', ') + ' tienen la misma URL</b>: una de las dos está mal. Revisa config.js.' + ir('Ver conexión') + '</div>';
   if (ej.length) h += '<div class="note" style="margin-top:12px">' + (ej.length === 2 ? 'Gym y Finanzas muestran' : FUENTES[ej[0]].nombre + ' muestra') + ' <b>datos de ejemplo</b>' +
     (sinClave.length ? ': falta poner tu clave en esta app. Si la pusiste en Chrome, en la APK se pone otra vez (no comparten datos).' + ir('Poner clave') : ' hasta que conectes tus hojas.' + ir('Conectar')) + '</div>';
+  h += tarjetaObjetivos() + tarjetaHabitos();
   h += '<h2>Gym ' + tagFuente('gym') + '</h2>' + seccionGym(k);
   h += '<h2>Finanzas ' + tagFuente('fin') + '</h2>' + seccionFin(k);
   return h;
@@ -394,7 +400,7 @@ window.addEventListener('popstate', () => {
   if (NATIVO) { nativo('App', 'minimizeApp'); ponerGuardia(); } else history.back();
 });
 const cabeza = titulo => '<div class="grab"><h3 id="hojaTitulo">' + titulo + '</h3><button class="x"' + clic('cerrarHoja') + ' aria-label="Cerrar">' + SVG.x + '</button></div>';
-const interruptor = (on, fn, titulo, sub) => '<button class="switch" role="switch" aria-checked="' + !!on + '"' + clic(fn) + '><span><span class="t1" style="font-size:15px">' + titulo + '</span>' +
+const interruptor = (on, fn, titulo, sub, arg) => '<button class="switch" role="switch" aria-checked="' + !!on + '"' + (arg === undefined ? clic(fn) : clic(fn, arg)) + '><span><span class="t1" style="font-size:15px">' + titulo + '</span>' +
   (sub ? '<br><span class="muted">' + sub + '</span>' : '') + '</span><span class="knob"></span></button>';
 
 /* ===================== Ajustes ===================== */
@@ -427,6 +433,7 @@ function hojaAjustes() {
     '<div class="hint" id="sumaMetas">' + textoSumaMetas(m) + '</div>' +
     '<div class="btns" style="margin-top:10px"><button class="btn sm ghost"' + clic('repartir') + '>Repartir el resto</button><button class="btn sm"' + clic('guardarMetasForm') + '>Guardar metas</button></div>' +
     '<div class="hint">Las metas las calcula tu app Gym; en cuanto Panel las lea, se usan esas. Mientras, estas.</div>';
+  h += bloqueHabitosAjustes() + bloqueAvisosAjustes();
   // Conexión
   const rep = urlsRepetidas();
   h += '<div class="fl" id="aj-conexion">Conexión con tus hojas</div>' +
@@ -448,7 +455,7 @@ function hojaAjustes() {
     (DB.registro.length ? ' Además tienes ' + DB.registro.length + ' comidas que registraste en Panel antes de pasar todo a Gym: se siguen sumando.' : '') + '</div>' +
     '<div class="btns" style="margin-top:10px">' + (conectada('com') ? '<button class="btn sm ghost"' + clic('sincronizar', true) + '>Subir ahora</button>' : '') +
     '<button class="btn sm ghost"' + clic('exportar') + '>Exportar respaldo</button></div></div>';
-  h += '<div class="hint" style="text-align:center;margin:18px 0 6px">Panel ' + VERSION_APP + ' · Gym, Finanzas y Comidas en un vistazo</div>';
+  h += '<div class="hint" style="text-align:center;margin:18px 0 6px">Panel ' + VERSION_APP + ' · Gym, Finanzas, Comidas y tus hábitos en un vistazo</div>';
   return h;
 }
 function bloqueConexion(f) {
@@ -532,13 +539,16 @@ function arrancar() {
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => aplicarTema(LS.get('pan_tema', 'auto'))); } catch (e) {}
   iniciarComidas();
   cargarCache();
-  // Accesos directos del ícono: ?accion=comida (registrar) y ?accion=semana (plan)
+  // Accesos directos del ícono: ?accion=comida (registrar), ?accion=semana (plan) y ?accion=revision (revisión de la semana)
   const p = new URLSearchParams(location.search), accion = p.get('accion');
+  if (accion === 'revision' || accion === 'habitos') TAB = 'hoy';
   if (accion === 'comida' || accion === 'semana') { TAB = 'comidas'; if (accion === 'semana') SUB = 'semana'; }
   if (p.toString() || location.hash) history.replaceState(null, '', location.pathname);
   ponerGuardia();
   pintar();
   if (accion === 'comida') setTimeout(() => abrirGymComida(), 300);
+  if (accion === 'revision') setTimeout(() => abrirRevision(), 300);
+  iniciarAvisos();
   actualizarHoy(); sincronizar();
   if ('serviceWorker' in navigator) {
     const tenia = !!navigator.serviceWorker.controller;

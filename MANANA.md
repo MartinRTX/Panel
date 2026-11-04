@@ -7,6 +7,20 @@ Te toma unos 20 minutos. Los pasos 1 a 4 conviene hacerlos en la compu; el 5 y e
 
 ---
 
+## Nuevo en Panel 1.7: lo que haces en Panel (cuando se publique)
+
+- **Hábitos** (en Hoy): 💧 agua, 😴 horas que dormiste, ánimo y los tuyos (engrane › Tus hábitos). Un toque cada uno;
+  si se te olvidó, toca **Ayer**. Se guardan en la hoja "Comidas 2026", pestaña **Hábitos**.
+- **Objetivos de la semana** (de 1 a 3): entrenar X días, correr X km, cumplir la comida X días, gastar menos de $X, agua,
+  dormir 7 h o el que tú escribas. Se miden solos con lo que ya registras en Gym y Finanzas; en Hoy ves cómo vas.
+- **Revisión de la semana**: el domingo Hoy te la pone arriba. Junta gym, cuerpo, comida, dinero y hábitos, te dice lo que
+  salió bien y lo que hay que mejorar, y ahí eliges tus objetivos para la que viene. 2 minutos.
+- **Avisos en el celular**: hábitos a las 9:30 pm, la revisión el domingo a las 7 pm, tus objetivos el jueves a las 7 pm y
+  el presupuesto a las 9 am si una categoría va muy rápido. Para tenerlos, **reinstala Panel.apk una vez** (Releases, encima
+  de la que tienes: no se borra nada) y en el engrane toca **Activar avisos**. No repite los de Gym.
+
+---
+
 ## 1. Activar GitHub Pages (2 min)
 
 Yo no tengo permiso para activarlo; el código ya está en la rama `main`.

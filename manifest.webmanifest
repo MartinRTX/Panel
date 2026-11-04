@@ -58,6 +58,18 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "Revisión de la semana",
+      "short_name": "Revisión",
+      "url": "./?accion=revision",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "categories": [

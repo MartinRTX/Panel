@@ -18,7 +18,9 @@ const EJEMPLO = (() => {
     const serie = pesos.map((p, i) => ({ d: dm(sumarDias(lunes, (i - 7) * 7 - 1)), peso: p, cint: cints[i] }));
     return {
       todayKey: hoy, sugGrupo: GRUPOS3[(GRUPOS3.indexOf(ultimo) + 1) % 3], ultimoGrupo: ultimo, ultimoGrupoFecha: fechaUlt, dias: [1, 2, 4, 5],
-      resumen: { semana, diasSemana: semana.filter(Boolean).length, promedio7: 78.5, cambioSemana: -0.2, cintura: 89, cambioCintura: -3 },
+      resumen: { semana, diasSemana: semana.filter(Boolean).length, promedio7: 78.5, cambioSemana: -0.2, cintura: 89, cambioCintura: -3,
+        diasSemanas: [3, 4, 2, 4, 3, 4, 4].map((n, i) => ({ l: sumarDias(lunes, (i - 7) * 7), n })).concat([{ l: lunes, n: semana.filter(Boolean).length }]),
+        records: [{ ej: 'Press de banca', k: sumarDias(lunes, -6), w: 60, r: 8, unit: 'kg', tipo: 'fuerza' }, { ej: 'Remo con barra', k: sumarDias(lunes, -3), w: 55, r: 10, unit: 'kg', tipo: 'peso' }] },
       trotes: { semanas, km7: semanas[5].km },
       cuerpo: { serie, actual: 89, base: 92, meta: 84 },
       ultimoPeso: 78.3,

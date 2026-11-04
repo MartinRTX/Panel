@@ -2,7 +2,7 @@
 # Se corre solo cuando cambias algo en la carpeta apk/ o este archivo, o a mano desde la pestaña Actions.
 # Resultado: en "Releases" del repo aparece Panel.apk para instalar desde el celular (solo desde main;
 # en otras ramas queda como artefacto de prueba y no reemplaza el APK que instalas).
-# El APK es un cascarón: carga https://martinrtx.github.io/Panel/, así que las mejoras de la app llegan solas
+# El APK es un cascarón: carga https://martinrtx.github.io/Panel/ (más los avisos en el celular), así que las mejoras de la app llegan solas
 # por GitHub Pages. Solo se vuelve a instalar si cambia la carpeta apk/.
 #
 # Firma: usa los secretos KEYSTORE_B64 y KEYSTORE_PASS (los mismos de Gym y Finanzas sirven).
@@ -70,7 +70,7 @@ jobs:
           mkdir -p "$J" && cp native/java/*.java "$J"/
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$M"
-          grep -q 'com.martinrtx.gym' "$M" || sed -i 's#<application#<queries>\n        <package android:name="com.martinrtx.gym" />\n        <package android:name="com.martinrtx.finanzas" />\n    </queries>\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <application#' "$M"
+          grep -q 'com.martinrtx.gym' "$M" || sed -i 's#<application#<queries>\n        <package android:name="com.martinrtx.gym" />\n        <package android:name="com.martinrtx.finanzas" />\n    </queries>\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
           cat "$M"
 
       - name: Número de versión (sube solo en cada compilación)
@@ -110,6 +110,15 @@ jobs:
           "$BT/apksigner" verify Panel.apk
           rm -f llave.jks
           echo "$FIRMA" > firma.txt
+
+      - name: Revisar que trae los avisos
+        # Hábitos, revisión del domingo, objetivos y presupuesto (avisos.js) necesitan el plugin de notificaciones y su permiso
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/aapt" dump permissions Panel.apk | tee permisos.txt
+          grep -q "android.permission.POST_NOTIFICATIONS" permisos.txt || { echo "Falta el permiso de notificaciones"; exit 1; }
+          unzip -p Panel.apk assets/capacitor.plugins.json | tee plugins.json
+          grep -qi "localnotifications" plugins.json || { echo "Falta el plugin de avisos"; exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:

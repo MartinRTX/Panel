@@ -261,8 +261,113 @@ const CALC = (() => {
     ['2 tacos de asada', '🌮', 412, 18.6, 40.4, 19.6]
   ].map(([nombre, ico, kcal, p, c, g]) => ({ nombre, ico, kcal, p, c, g }));
 
+  /* ===================== Semana: revisión del domingo, objetivos y hábitos ===================== */
+  // Gym manda las semanas como 'dd/mm': ¿cae entre ese lunes y su domingo? (se prueba con el año del lunes y del domingo)
+  function ddmmEn(ddmm, lunes) {
+    const m = /^(\d{2})\/(\d{2})$/.exec(String(ddmm || ''));
+    if (!m) return false;
+    const dom = sumarDias(lunes, 6);
+    return [lunes.slice(0, 4), dom.slice(0, 4)].some(y => { const k = y + '-' + m[2] + '-' + m[1]; return k >= lunes && k <= dom; });
+  }
+  // Gym en una semana: días que entrenaste, km, peso y cintura de esa semana (con su cambio) y récords.
+  // Días: los manda el script de Gym por semana (diasSemanas); si aún no, lo que Panel fue guardando (anotadas: { lunes: n })
+  function semanaGym(d, lunes, metaDias, anotadas) {
+    d = d || {};
+    const r = d.resumen || {}, t = d.trotes || {}, cu = d.cuerpo || {}, dom = sumarDias(lunes, 6);
+    const ds = (Array.isArray(r.diasSemanas) ? r.diasSemanas : []).find(x => x && x.l === lunes);
+    let dias = ds ? num(ds.n) : null;
+    if (dias === null && d.todayKey && lunesDe(d.todayKey) === lunes) dias = vacio(r.diasSemana) ? (r.semana || []).filter(Boolean).length : num(r.diasSemana);
+    if (dias === null && anotadas && !vacio(anotadas[lunes])) dias = num(anotadas[lunes]);
+    const semanas = Array.isArray(t.semanas) ? t.semanas : [], iKm = semanas.findIndex(x => ddmmEn(x.d, lunes));
+    const serie = Array.isArray(cu.serie) ? cu.serie : [];
+    const deSerie = campo => {
+      const conValor = serie.filter(x => !vacio(x[campo])), i = conValor.findIndex(x => ddmmEn(x.d, lunes));
+      if (i < 0) return { v: null, cambio: null };
+      return { v: num(conValor[i][campo]), cambio: i > 0 ? r1(num(conValor[i][campo]) - num(conValor[i - 1][campo])) : null };
+    };
+    return { lunes, dias, metaDias: metaDias || 4, km: iKm >= 0 ? r1(semanas[iKm].km) : null, kmAntes: iKm > 0 ? r1(semanas[iKm - 1].km) : null,
+      peso: deSerie('peso'), cintura: deSerie('cint'),
+      records: (Array.isArray(r.records) ? r.records : []).filter(x => x && x.k >= lunes && x.k <= dom) };
+  }
+  // Lo que gastaste esa semana (gastos menos reembolsos, como Finanzas) por categoría, y cómo se compara
+  function gastoEntre(movs, desde, hasta) {
+    const porCat = {};
+    let total = 0;
+    (movs || []).forEach(m => {
+      if (!m || !m.fecha || m.fecha < desde || m.fecha > hasta || (m.tipo !== 'Gasto' && m.tipo !== 'Reembolso')) return;
+      const v = (m.tipo === 'Gasto' ? 1 : -1) * num(m.monto);
+      porCat[m.categoria || 'Sin categoría'] = (porCat[m.categoria || 'Sin categoría'] || 0) + v; total += v;
+    });
+    return { total: r2(total), porCat };
+  }
+  function gastoSemana(d, lunes) {
+    const movs = (d && d.movs) || [], x = gastoEntre(movs, lunes, sumarDias(lunes, 6));
+    const conAlgo = l => movs.some(m => m && m.fecha && m.fecha >= l && m.fecha <= sumarDias(l, 6));   // semanas sin nada registrado no se comparan
+    const antes = conAlgo(sumarDias(lunes, -7)) ? gastoEntre(movs, sumarDias(lunes, -7), sumarDias(lunes, -1)).total : null;
+    let suma4 = 0, n4 = 0;
+    for (let i = 1; i <= 4; i++) {
+      const l = sumarDias(lunes, -7 * i);
+      if (!conAlgo(l)) continue;
+      suma4 += gastoEntre(movs, l, sumarDias(l, 6)).total; n4++;
+    }
+    const cats = Object.keys(x.porCat).map(n => ({ nombre: n, gastado: r2(x.porCat[n]) })).filter(c => c.gastado > 0).sort((a, b) => b.gastado - a.gastado);
+    return { total: x.total, cats, antes, prom4: n4 ? r2(suma4 / n4) : null };
+  }
+  // Hábitos de la semana: cuántos días los marcaste, agua, sueño, ánimo y los tuyos (solo hasta hoy)
+  function resumenHabitos(habitos, lunes, hoy) {
+    const dom = sumarDias(lunes, 6), hasta = hoy && hoy < dom ? hoy : dom;
+    const dias = (habitos || []).filter(h => h && h.fecha >= lunes && h.fecha <= hasta);
+    const suenos = dias.filter(h => !vacio(h.sueno)).map(h => num(h.sueno)), animos = dias.filter(h => !vacio(h.animo)).map(h => num(h.animo));
+    const extras = {};
+    dias.forEach(h => (h.extras || []).forEach(e => { extras[e] = (extras[e] || 0) + 1; }));
+    const prom = a => a.length ? r1(a.reduce((x, y) => x + y, 0) / a.length) : null;
+    return { lunes, transcurridos: hasta < lunes ? 0 : difDias(lunes, hasta) + 1, marcados: dias.length, agua: dias.filter(h => h.agua === true).length,
+      suenoProm: prom(suenos), noches7: suenos.filter(v => v >= 7).length, animoProm: prom(animos), extras };
+  }
+  // Objetivos de la semana: qué se mide y de dónde sale (ctx = { gym, gasto, comida, habitos } de esa semana)
+  const OBJETIVOS = {
+    gym: { nombre: 'Entrenar', unidad: 'días', ico: '🏋️', max: 7 }, km: { nombre: 'Correr', unidad: 'km', ico: '🏃', max: 100 },
+    comida: { nombre: 'Cumplir la comida', unidad: 'días', ico: '🍽️', max: 7 }, gasto: { nombre: 'Gastar menos de', unidad: '$', ico: '💸', max: 1000000 },
+    agua: { nombre: 'Tomar agua', unidad: 'días', ico: '💧', max: 7 }, sueno: { nombre: 'Dormir 7 h o más', unidad: 'noches', ico: '😴', max: 7 },
+    libre: { nombre: 'Libre', unidad: '', ico: '✍️', max: 1 }
+  };
+  function valorObjetivo(o, ctx) {
+    ctx = ctx || {};
+    switch (o.tipo) {
+      case 'gym': return ctx.gym ? ctx.gym.dias : null;
+      case 'km': return ctx.gym ? ctx.gym.km : null;
+      case 'comida': return ctx.comida ? ctx.comida.cumpleAmbas + (ctx.comida.hoy && ctx.comida.hoy.cumple && ctx.comida.hoy.cumple.ambas ? 1 : 0) : null;
+      case 'gasto': return ctx.gasto ? ctx.gasto.total : null;
+      case 'agua': return ctx.habitos ? ctx.habitos.agua : null;
+      case 'sueno': return ctx.habitos ? ctx.habitos.noches7 : null;
+      case 'libre': return o.hecho ? 1 : 0;
+    }
+    return null;
+  }
+  // terminada: la semana ya pasó. Gasto: se cumple quedándote abajo; lo demás, llegando a la meta.
+  function progresoObjetivo(o, ctx, terminada) {
+    const meta = o.tipo === 'libre' ? 1 : num(o.meta), v = valorObjetivo(o, ctx);
+    if (v === null || v === undefined) return { valor: null, meta, pct: 0, logrado: null };
+    if (o.tipo === 'gasto') {
+      const dentro = v <= meta;
+      return { valor: r2(v), meta, pct: meta ? Math.min(1, v / meta) : 1, logrado: terminada || !dentro ? dentro : null, pasado: !dentro };
+    }
+    const ok = v >= meta;
+    return { valor: o.tipo === 'km' ? r1(v) : v, meta, pct: meta ? Math.min(1, v / meta) : 1, logrado: ok ? true : terminada ? false : null };
+  }
+  // Metas que se proponen al elegir un objetivo, con lo de la semana anterior
+  function sugerirMeta(tipo, ctx, metaDias) {
+    ctx = ctx || {};
+    if (tipo === 'gym') return metaDias || 4;
+    if (tipo === 'km') return Math.max(5, Math.ceil(num(ctx.gym && ctx.gym.km)));
+    if (tipo === 'gasto') { const g = ctx.gasto && (ctx.gasto.prom4 || ctx.gasto.total); return g ? Math.max(100, Math.round(g * 0.9 / 100) * 100) : 2000; }
+    if (tipo === 'libre') return 1;
+    return 5;
+  }
+
   return { pad, r1, r2, claveDia, sumarDias, difDias, diaSemana, lunesDe, GRUPOS3, NOMBRE_GRUPO, gymHoy, saldo, saldoPersona, finanzasHoy,
            COMIDAS, MAC, macrosDe, sumar, delDia, totalesDia, cumple, resumenSemana, repartirMetas, BASE, deIngredientes, SEMILLAS, CASERA, casera,
-           nombreCasera, SUELTOS, deGym, frecuentes, tiempoPorHora };
+           nombreCasera, SUELTOS, deGym, frecuentes, tiempoPorHora,
+           ddmmEn, semanaGym, gastoSemana, resumenHabitos, OBJETIVOS, valorObjetivo, progresoObjetivo, sugerirMeta };
 })();
 if (typeof module !== 'undefined') module.exports = CALC;

@@ -1,7 +1,7 @@
 // Prueba la app en un Chromium del tamaño de un Pixel, sin tocar Google: las URL de Apps Script se contestan aquí mismo
 // (Gym y Finanzas con los datos de ejemplo; Comidas con apps-script/Comidas.gs corriendo sobre una hoja de mentira).
 //   node herramientas/probar.js [carpeta-para-capturas]
-// Revisa: que no haya errores en la consola, Hoy, Comidas (lo de Gym, plan, resumen), metas (y que lleguen a Gym), conexión,
+// Revisa: que no haya errores en la consola, Hoy, hábitos, objetivos y la revisión de la semana, Comidas (lo de Gym, plan, resumen), metas, conexión,
 // que el plan y las metas guardados sin conexión se suban al conectar, que la app abra sin señal y los avisos de URL.
 const http = require('http');
 const fs = require('fs');
@@ -166,6 +166,54 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   ok(/Promedio de calorías/.test(t) || /Los promedios cuentan los días completos/.test(t), 'resumen semanal con lo de Gym');
   await foto('6-resumen');
 
+  // 5b. Hábitos y objetivos (se suben a la hoja) y la revisión de la semana
+  await pagina.click('#tHoy');
+  await pagina.waitForSelector('.card.hab');
+  await pagina.locator('.hab .habrow:has-text("Agua") .chip', { hasText: 'Sí' }).click();
+  await pagina.locator('.hab .habrow:has-text("Dormí") .chip', { hasText: '7' }).click();
+  await pagina.locator('.hab .habrow:has-text("Ánimo") .chip >> nth=3').click();
+  await pagina.locator('.hab .chip.mas').click();
+  await pagina.waitForSelector('#nuevoHab');
+  await pagina.fill('#nuevoHab', 'Leer 10 min');
+  await pagina.locator('.sheet .btn', { hasText: 'Agregar' }).click();
+  ok(/Leer 10 min/.test(await pagina.locator('.sheet').innerText()), 'Ajustes: agregar un hábito propio');
+  await pagina.click('.sheet .grab .x');
+  await pagina.locator('.hab .chip', { hasText: 'Leer 10 min' }).click();
+  await pagina.waitForTimeout(300);
+  ok(await pagina.evaluate(() => { const h = habitoDe(hoy()); return h.agua === true && h.sueno === 7 && h.animo === 4 && h.extras.join() === 'Leer 10 min'; }), 'hábitos de hoy: agua, sueño, ánimo y uno propio');
+  await pagina.locator('.hab .seg.mini .chip', { hasText: 'Ayer' }).click();
+  await pagina.locator('.hab .habrow:has-text("Dormí") .chip', { hasText: '6' }).click();
+  ok(await pagina.evaluate(() => habitoDe(sumarDias(hoy(), -1)).sueno === 6 && habitoDe(hoy()).sueno === 7), 'hábitos: también se marca ayer');
+  await pagina.locator('.hab .seg.mini .chip', { hasText: 'Hoy' }).click();
+  await foto('9-habitos');
+  // Revisión y un objetivo nuevo
+  await pagina.evaluate(() => abrirRevision());
+  await pagina.waitForSelector('.sheet.show');
+  let rv = await pagina.locator('.sheet').innerText();
+  ok(/gym y cuerpo/i.test(rv) && /dinero/i.test(rv) && /hábitos/i.test(rv) && /comida/i.test(rv), 'revisión: gym, comida, dinero y hábitos');
+  ok(/Días de gym/.test(rv) && /Gastaste/.test(rv), 'revisión: días de gym y lo que gastaste');
+  await foto('10-revision');
+  await pagina.locator('.sheet #rev-objetivos + .card .pick button', { hasText: 'Entrenar' }).click();
+  await pagina.locator('.sheet .stepper button', { hasText: '＋' }).click();
+  await pagina.locator('.sheet .actbar .btn', { hasText: 'Agregar' }).click();
+  await pagina.locator('.sheet #rev-objetivos + .card .pick button', { hasText: 'Otro' }).click();
+  await pagina.fill('#noTexto', 'Llamar a mi abuela');
+  await pagina.locator('.sheet .actbar .btn', { hasText: 'Agregar' }).click();
+  await pagina.waitForTimeout(300);
+  ok(await pagina.evaluate(() => { const o = objetivosDe(lunesObjetivos()); return o.length === 2 && o[0].tipo === 'gym' && o[0].meta === CONFIG.META_DIAS_GYM + 1 && o[1].texto === 'Llamar a mi abuela'; }), 'revisión: elegir objetivos (Entrenar 5 días y uno libre)');
+  await foto('11-objetivos');
+  await pagina.click('.sheet .grab .x');
+  const subioHab = await pagina.waitForFunction(() => !JSON.parse(localStorage.getItem('pan_cola') || '[]').length, null, { timeout: 10000 }).then(() => true).catch(() => false);
+  const dh = hoja.post({ k: 'secreta', action: 'data', args: [30] }).result;
+  ok(subioHab && dh.habitos.length === 2 && dh.objetivos.length === 2 && dh.habitos.some(h => h.extras.join() === 'Leer 10 min'), 'hábitos y objetivos llegan a la hoja (' + dh.habitos.length + ' días, ' + dh.objetivos.length + ' objetivos)');
+  // Con un script de Comidas viejo (1) los hábitos esperan en la cola: no se mandan ni se pierden
+  ok(await pagina.evaluate(() => { localStorage.setItem('pan_com_v', '1'); const r = !enviable({ action: 'guardarHabito' }) && enviable({ action: 'guardarPlan' }); localStorage.setItem('pan_com_v', '2'); return r; }),
+    'script de Comidas 1: hábitos y objetivos esperan en la cola');
+  // Objetivos de esta semana en Hoy (si la revisión los puso para esta semana)
+  if (await pagina.evaluate(() => lunesObjetivos() === lunesDe(hoy()))) ok(/Objetivos de la semana/.test(await texto()), 'Hoy muestra los objetivos de la semana con su avance');
+  await foto('12-hoy-objetivos');
+  await pagina.click('#tComidas');
+
   // 6. Sin señal: la app abre con lo guardado
   await ctx.setOffline(true);
   await pagina.reload();
@@ -177,7 +225,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
 
   // 7. URL equivocada (la de Gym pegada en Comidas, como en config.js con dos URL iguales): se avisa y no se pierde nada
   // Otro celular en limpio (otro contexto: nada guardado), con la URL de Gym también en Comidas
-  const ctx2 = await navegador.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', serviceWorkers: 'block' });
+  const ctx2 = await navegador.newContext({ viewport: { width: 412, height: 915 }, colorScheme: 'dark', serviceWorkers: 'block', timezoneId: 'America/Hermosillo' });
   await ctx2.route('https://script.google.com/**', ruta => ctx.__ruta(ruta));
   await ctx2.addInitScript(() => { if (!localStorage.getItem('pan_conexion')) localStorage.setItem('pan_conexion', JSON.stringify({
     gym: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' }, com: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' } })); });
@@ -204,7 +252,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
 
   // 8. Script de Gym sin Panel.gs: solo hoy y ayer (lo que ya manda la app Gym) y un aviso
   conPanelGs = false;
-  const ctx3 = await navegador.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block' });
+  const ctx3 = await navegador.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block', timezoneId: 'America/Hermosillo' });
   await ctx3.route('https://script.google.com/**', ruta => ctx.__ruta(ruta));
   await ctx3.addInitScript(() => { if (!localStorage.getItem('pan_conexion')) localStorage.setItem('pan_conexion', JSON.stringify({
     gym: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' } })); });

@@ -1,20 +1,13 @@
 /**
- * Comidas 2026 – API de la app Panel (Apps Script pegado en la hoja "Comidas 2026").
+ * Comidas 2026 – API de la app Panel (el Apps Script de la hoja "Comidas 2026").
  *
- * Para instalar (una sola vez; los pasos completos están en MANANA.md):
- *  1. En la hoja "Comidas 2026": Extensiones > Apps Script. Borra lo que haya y pega este archivo completo.
- *  2. ⚙️ Configuración del proyecto > Propiedades del script > Agregar: propiedad CLAVE, valor tu clave (puede ser la
- *     misma de Gym y Finanzas). Guarda. (Antes se escribía en la línea de CLAVE del código; eso sigue funcionando.)
- *  3. Arriba elige la función "instalar" y toca Ejecutar. Acepta los permisos: crea las pestañas.
- *  4. Implementar > Nueva implementación > ⚙️ "Aplicación web". Ejecutar como: Yo. Quién tiene acceso: Cualquier usuario.
- *     Implementar y copia la "URL de la app web" (termina en /exec): va en config.js de Panel.
- * Para actualizarlo después: pega el archivo nuevo y en Implementar > Gestionar implementaciones > ✏️ (editar)
- * elige Versión: Nueva versión > Implementar. Así la URL /exec sigue siendo la misma.
+ * Se publica solo desde GitHub: el workflow "Publicar Comidas (Panel)" del repo Gym-script toma este archivo de main
+ * con clasp, crea una versión y actualiza la misma implementación (la URL /exec no cambia). NUNCA lo pegues a mano.
+ * La clave va en ⚙️ Configuración del proyecto > Propiedades del script > CLAVE (este archivo es público: aquí nunca).
  *
- * Este archivo vive en GitHub, que es público: ahí la clave NUNCA se escribe, solo en tu Apps Script.
- *
- * Pestañas (se crean solas): Registro (lo que comes), Guardadas (tus comidas de un toque), Plan (la semana),
- * Metas (kcal y macros) y Resumen (fórmulas para que veas tus totales por día directo en la hoja).
+ * Pestañas (se crean solas): Registro (lo que comías en Panel), Guardadas (tus platillos), Plan (la semana),
+ * Metas (kcal y macros), Resumen (fórmulas con tus totales por día), Hábitos (agua, sueño, ánimo y los tuyos)
+ * y Objetivos (lo que te propones cada semana en la revisión del domingo).
  * La app manda los cambios con un ID: si un cambio llega dos veces, se sobrescribe y nunca se duplica.
  */
 
@@ -22,9 +15,9 @@
 // archivo se publica con clasp desde GitHub sin escribir la clave en ningún lado. La línea de abajo es solo para quien
 // todavía lo pega a mano; si las dos existen, gana la de Propiedades.
 const CLAVE = 'PON_AQUI_TU_CLAVE';
-const VERSION = 1;
+const VERSION = 2;      // 2: hábitos y objetivos de la semana
 
-const H = { registro: 'Registro', guardadas: 'Guardadas', plan: 'Plan', metas: 'Metas', resumen: 'Resumen' };
+const H = { registro: 'Registro', guardadas: 'Guardadas', plan: 'Plan', metas: 'Metas', resumen: 'Resumen', habitos: 'Hábitos', objetivos: 'Objetivos' };
 const ENC = {
   // Registro: una fila por cosa que comiste (kcal y macros ya multiplicados por la porción)
   Registro: ['ID', 'Fecha', 'Comida', 'Nombre', 'Porción', 'kcal', 'Proteína (g)', 'Carbs (g)', 'Grasa (g)', 'Origen', 'Guardada', 'Registrado'],
@@ -32,8 +25,14 @@ const ENC = {
   Guardadas: ['ID', 'Nombre', 'Comida', 'kcal', 'Proteína (g)', 'Carbs (g)', 'Grasa (g)', 'Favorita', 'Ícono', 'Detalle', 'Origen', 'Creada'],
   // Plan: una comida por día y tiempo (desayuno, comida, cena, snack)
   Plan: ['ID', 'Fecha', 'Comida', 'Guardada', 'Nombre', 'Porción', 'kcal', 'Proteína (g)', 'Carbs (g)', 'Grasa (g)', 'Ícono'],
-  Metas: ['Meta', 'Valor']
+  Metas: ['Meta', 'Valor'],
+  // Hábitos: un renglón por día. Extras = tus hábitos propios que sí hiciste ese día (separados por coma)
+  'Hábitos': ['ID', 'Fecha', 'Agua', 'Sueño (h)', 'Ánimo (1-5)', 'Extras', 'Actualizado'],
+  // Objetivos: hasta 3 por semana (la semana empieza en lunes)
+  Objetivos: ['ID', 'Semana', 'Tipo', 'Meta', 'Texto', 'Hecho', 'Actualizado']
 };
+const TIPOS_OBJ = { gym: 'Días de gym', km: 'Km de trote', comida: 'Días que cumples la comida', gasto: 'Gasto máximo ($)',
+  agua: 'Días con agua', sueno: 'Noches de 7 h o más', libre: 'Libre' };
 const COMIDAS = { desayuno: 'Desayuno', comida: 'Comida', cena: 'Cena', snack: 'Snack' };
 const METAS = [['kcal', 'Calorías (kcal)', 800, 6000], ['p', 'Proteína (g)', 0, 500], ['c', 'Carbs (g)', 0, 1000], ['g', 'Grasa (g)', 0, 400]];
 
@@ -53,6 +52,7 @@ function doPost(e) {
     asegurarEstructura();
     if (cuerpo.action === 'ping') return 'ok';
     if (cuerpo.action === 'data') return leerTodo((cuerpo.args || [])[0]);
+    if (cuerpo.action === 'version') return VERSION;
     const lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
@@ -93,6 +93,9 @@ function ejecutar(accion, args) {
     case 'guardarPlan': return guardarPlan(args[0]);
     case 'borrarPlan': return borrar(H.plan, args[0]);
     case 'guardarMetas': return guardarMetas(args[0]);
+    case 'guardarHabito': return guardarHabito(args[0]);
+    case 'guardarObjetivo': return guardarObjetivo(args[0]);
+    case 'borrarObjetivo': return borrar(H.objetivos, args[0]);
     default: throw new Error('Acción desconocida: ' + accion);
   }
 }
@@ -133,6 +136,10 @@ function formato(nombre, h) {
   } else if (nombre === H.metas) {
     h.getRange(2, 1, METAS.length + 1, 1).setValues(METAS.map(m => [m[1]]).concat([['Actualizado']]));
     h.getRange(METAS.length + 2, 2).setNumberFormat('dd/mm/yyyy hh:mm');
+  } else if (nombre === H.habitos) {
+    h.getRange('B:B').setNumberFormat('dd/mm/yyyy'); h.getRange('D:D').setNumberFormat('0.#'); h.getRange('G:G').setNumberFormat('dd/mm/yyyy hh:mm');
+  } else if (nombre === H.objetivos) {
+    h.getRange('B:B').setNumberFormat('dd/mm/yyyy'); h.getRange('G:G').setNumberFormat('dd/mm/yyyy hh:mm');
   }
 }
 // Resumen: totales por día con fórmulas (la app no lo usa; es para que lo veas en la hoja)
@@ -217,7 +224,13 @@ function leerTodo(dias) {
   const plan = filas(hoja(H.plan), ENC.Plan.length).filter(r => r[0] !== '' && aTexto(r[1]) >= desdePlan).map(r => ({
     id: String(r[0]), fecha: aTexto(r[1]), comida: claveComida(r[2]), gid: String(r[3] || ''), nombre: String(r[4]), porcion: numero(r[5]) || 1,
     kcal: numero(r[6]), p: numero(r[7]), c: numero(r[8]), g: numero(r[9]), ico: String(r[10] || '') }));
-  return { registro, guardadas, plan, metas: leerMetas(), hoja: libro().getName(), zona: zona(), version: VERSION };
+  const habitos = filas(hoja(H.habitos), ENC[H.habitos].length).filter(r => r[0] !== '' && aTexto(r[1]) >= desde).map(r => ({
+    id: String(r[0]), fecha: aTexto(r[1]), agua: r[2] === 'Sí' ? true : r[2] === 'No' ? false : null,
+    sueno: r[3] === '' ? null : numero(r[3]), animo: r[4] === '' ? null : numero(r[4]),
+    extras: String(r[5] || '').split(',').map(x => x.trim()).filter(Boolean) }));
+  const objetivos = filas(hoja(H.objetivos), ENC.Objetivos.length).filter(r => r[0] !== '' && aTexto(r[1]) >= hace(Math.max(dias, 70))).map(r => ({
+    id: String(r[0]), lunes: aTexto(r[1]), tipo: claveTipo(r[2]), meta: numero(r[3]), texto: String(r[4] || ''), hecho: String(r[5]) === 'Sí' }));
+  return { registro, guardadas, plan, metas: leerMetas(), habitos, objetivos, hoja: libro().getName(), zona: zona(), version: VERSION };
 }
 function leerMetas() {
   const vals = {};
@@ -261,4 +274,29 @@ function guardarMetas(m) {
   h.getRange(2, 2, METAS.length, 1).setValues(valores);
   h.getRange(METAS.length + 2, 2).setValue(new Date());
   return true;
+}
+// Un día de hábitos (se sobrescribe completo cada vez que cambias algo de ese día)
+function guardarHabito(x) {
+  if (!x) throw new Error('Hábito vacío');
+  const v = x.agua === true ? 'Sí' : x.agua === false ? 'No' : '';
+  const sueno = x.sueno === null || x.sueno === undefined || x.sueno === '' ? '' : Math.min(16, Math.max(0, Math.round(numero(x.sueno) * 2) / 2));
+  const animo = x.animo === null || x.animo === undefined || x.animo === '' ? '' : Math.min(5, Math.max(1, Math.round(numero(x.animo))));
+  const extras = (Array.isArray(x.extras) ? x.extras : []).map(e => String(e).replace(/,/g, ' ').trim().slice(0, 40)).filter(Boolean).slice(0, 8).join(', ');
+  return escribir(H.habitos, id(x.id), [id(x.id), aFecha(x.fecha), v, sueno, animo, texto(extras, 400), new Date()]);
+}
+function claveTipo(v) {
+  const t = String(v || '');
+  if (TIPOS_OBJ[t]) return t;
+  const k = Object.keys(TIPOS_OBJ).find(x => TIPOS_OBJ[x] === t);
+  return k || 'libre';
+}
+function guardarObjetivo(o) {
+  if (!o) throw new Error('Objetivo vacío');
+  if (!TIPOS_OBJ[o.tipo]) throw new Error('Tipo de objetivo inválido: ' + o.tipo);
+  const lunes = aFecha(o.lunes), [y, m, d] = String(o.lunes).split('-').map(Number);
+  if (new Date(Date.UTC(y, m - 1, d)).getUTCDay() !== 1) throw new Error('La semana debe empezar en lunes');
+  const meta = o.tipo === 'libre' ? '' : cantidad(o.meta, o.tipo === 'gasto' ? 1000000 : 1000);
+  const tx = texto(o.texto, 120);
+  if (o.tipo === 'libre' && !tx) throw new Error('El objetivo libre necesita texto');
+  return escribir(H.objetivos, id(o.id), [id(o.id), lunes, TIPOS_OBJ[o.tipo], meta, tx, o.hecho ? 'Sí' : '', new Date()]);
 }

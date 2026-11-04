@@ -36,7 +36,8 @@ test('Clave incorrecta: no lee ni escribe nada', () => {
 test('instalar: "Hoja 1" se vuelve Registro y se crean las demás pestañas con encabezados', () => {
   const s = cargarScript(K);
   s.instalar();
-  assert.deepStrictEqual(s.lb.hojas.map(h => h.nombre), ['Registro', 'Guardadas', 'Plan', 'Metas', 'Resumen']);
+  assert.deepStrictEqual(s.lb.hojas.map(h => h.nombre), ['Registro', 'Guardadas', 'Plan', 'Metas', 'Hábitos', 'Objetivos', 'Resumen']);
+  assert.strictEqual(s.lb.getSheetByName('Hábitos').celda(1, 3), 'Agua');
   assert.strictEqual(s.lb.getSheetByName('Registro').celda(1, 1), 'ID');
   assert.strictEqual(s.lb.getSheetByName('Metas').celda(2, 1), 'Calorías (kcal)');
   assert.match(s.lb.getSheetByName('Resumen').formulas['2,1'], /^=IFERROR\(QUERY\(Registro!B2:I, "select B, sum\(F\)/);
@@ -46,8 +47,9 @@ test('Hoja nueva: data regresa vacío y sin metas (la app sube las suyas)', () =
   const s = cargarScript(K);
   const r = s.post({ k: K, action: 'data', args: [120] });
   assert.strictEqual(r.ok, true);
-  assert.deepStrictEqual([r.result.registro, r.result.guardadas, r.result.plan, r.result.metas], [[], [], [], null]);
-  assert.strictEqual(r.result.version, 1);
+  assert.deepStrictEqual([r.result.registro, r.result.guardadas, r.result.plan, r.result.metas, r.result.habitos, r.result.objetivos], [[], [], [], null, [], []]);
+  assert.strictEqual(r.result.version, 2);
+  assert.strictEqual(s.post({ k: K, action: 'version' }).result, 2);
 });
 
 test('Un lote con todo: registro, guardadas, plan y metas; se lee igual que como se mandó', () => {
@@ -136,4 +138,48 @@ test('data solo manda los últimos N días de registro', () => {
   s.post(lote([{ action: 'guardarRegistro', args: [reg('viejo', { fecha: hace(200) })] }, { action: 'guardarRegistro', args: [reg('nuevo', { fecha: hace(3) })] }]));
   assert.deepStrictEqual(s.post({ k: K, action: 'data', args: [120] }).result.registro.map(x => x.id), ['nuevo']);
   assert.deepStrictEqual(s.post({ k: K, action: 'data', args: [400] }).result.registro.map(x => x.id), ['viejo', 'nuevo']);
+});
+
+// Lunes de esta semana (aaaa-mm-dd), como lo calcula Panel
+const lunesK = (() => { const d = new Date(); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return aClave(d); })();
+
+test('Hábitos: un renglón por día; cambiarlo lo sobrescribe y se lee igual', () => {
+  const s = cargarScript(K);
+  const h = extra => Object.assign({ id: 'hab-' + hoyK, fecha: hoyK, agua: true, sueno: 7.5, animo: 4, extras: ['Leer', 'Sin refresco'] }, extra || {});
+  assert.ok(s.post(lote([{ action: 'guardarHabito', args: [h()] }])).result[0].ok);
+  assert.ok(s.post(lote([{ action: 'guardarHabito', args: [h({ agua: false, sueno: null, extras: ['Leer'] })] }])).result[0].ok);
+  const d = s.post({ k: K, action: 'data', args: [120] }).result;
+  assert.deepStrictEqual(d.habitos, [{ id: 'hab-' + hoyK, fecha: hoyK, agua: false, sueno: null, animo: 4, extras: ['Leer'] }]);
+  assert.strictEqual(s.lb.getSheetByName('Hábitos').celda(2, 3), 'No');
+});
+
+test('Hábitos: valores raros se recortan (sueño 0–16 h en medias horas, ánimo 1–5, comas fuera de los nombres)', () => {
+  const s = cargarScript(K);
+  s.post(lote([{ action: 'guardarHabito', args: [{ id: 'hab-x', fecha: hoyK, agua: 'quizá', sueno: 30, animo: 9, extras: ['Correr, nadar', '=MAL()'] }] }]));
+  const x = s.post({ k: K, action: 'data' }).result.habitos[0];
+  assert.deepStrictEqual([x.agua, x.sueno, x.animo], [null, 16, 5]);
+  assert.deepStrictEqual(x.extras, ['Correr  nadar', '=MAL()']);
+  assert.strictEqual(typeof s.lb.getSheetByName('Hábitos').formulas['2,6'], 'undefined');
+});
+
+test('Objetivos: se guardan por semana (lunes), se editan, se marcan y se borran', () => {
+  const s = cargarScript(K);
+  const o = (id, extra) => Object.assign({ id, lunes: lunesK, tipo: 'gym', meta: 4, texto: '', hecho: false }, extra || {});
+  const r = s.post(lote([
+    { action: 'guardarObjetivo', args: [o('obj-1')] },
+    { action: 'guardarObjetivo', args: [o('obj-2', { tipo: 'gasto', meta: 2500 })] },
+    { action: 'guardarObjetivo', args: [o('obj-3', { tipo: 'libre', meta: null, texto: 'Llamar a mi abuela' })] },
+    { action: 'guardarObjetivo', args: [o('obj-mal', { tipo: 'volar' })] },
+    { action: 'guardarObjetivo', args: [o('obj-mal2', { lunes: aClave(new Date(new Date(lunesK + 'T12:00:00').getTime() + 864e5)) })] },
+    { action: 'guardarObjetivo', args: [o('obj-mal3', { tipo: 'libre', texto: '  ' })] }
+  ]));
+  assert.deepStrictEqual(r.result.map(x => x.ok), [true, true, true, false, false, false]);
+  assert.match(r.result[3].error, /Tipo de objetivo inválido/);
+  assert.match(r.result[4].error, /lunes/);
+  s.post(lote([{ action: 'guardarObjetivo', args: [o('obj-3', { tipo: 'libre', meta: null, texto: 'Llamar a mi abuela', hecho: true })] }, { action: 'borrarObjetivo', args: ['obj-1'] }]));
+  const d = s.post({ k: K, action: 'data' }).result;
+  assert.deepStrictEqual(d.objetivos.map(x => [x.id, x.tipo, x.meta, x.texto, x.hecho, x.lunes]),
+    [['obj-2', 'gasto', 2500, '', false, lunesK], ['obj-3', 'libre', 0, 'Llamar a mi abuela', true, lunesK]]);
+  // En la hoja se lee con palabras
+  assert.strictEqual(s.lb.getSheetByName('Objetivos').celda(2, 3), 'Gasto máximo ($)');
 });

@@ -11,12 +11,14 @@ let DIA = null, SEM = null, SEM_RES = null;        // null = hoy / esta semana
 
 /* ===================== Datos en el celular ===================== */
 function dbNueva() {
-  return { registro: [], plan: [], metas: Object.assign({}, CONFIG.METAS),
+  return { registro: [], plan: [], habitos: [], objetivos: [], metas: Object.assign({}, CONFIG.METAS),
            guardadas: CALC.SEMILLAS.map(s => Object.assign({}, s, { creada: hoy() })) };
 }
 function iniciarComidas() {
   DB = LS.get('pan_db', null);
   if (!DB || !Array.isArray(DB.registro)) { DB = dbNueva(); guardarDB(); }
+  if (!Array.isArray(DB.habitos)) DB.habitos = [];
+  if (!Array.isArray(DB.objetivos)) DB.objetivos = [];
   // Lo que iba en camino cuando se cerró la app se vuelve a mandar (en la hoja no se duplica)
   const q = cola();
   if (q.some(x => x.enviado)) LS.set('pan_cola', q.map(x => Object.assign(x, { enviado: false })));
@@ -50,6 +52,9 @@ function aplicarOp(db, op) {
     case 'guardarPlan': pon(db.plan, Object.assign({}, a[0])); break;
     case 'borrarPlan': db.plan = db.plan.filter(x => x.id !== a[0]); break;
     case 'guardarMetas': db.metas = Object.assign({}, a[0]); break;
+    case 'guardarHabito': pon(db.habitos = db.habitos || [], Object.assign({}, a[0])); break;
+    case 'guardarObjetivo': pon(db.objetivos = db.objetivos || [], Object.assign({}, a[0])); break;
+    case 'borrarObjetivo': db.objetivos = (db.objetivos || []).filter(x => x.id !== a[0]); break;
   }
 }
 function cambiar(action, args, tag) {
@@ -66,10 +71,14 @@ async function verificarComidas() {
   if (LS.get('pan_com_ok', '') === u) return true;
   const d = await llamar('com', { action: 'data', args: [1] });
   revisarScript('com', d);
-  LS.set('pan_com_ok', u); COM_ERROR = null;
+  LS.set('pan_com_ok', u); LS.set('pan_com_v', Number(d.version) || 1); COM_ERROR = null;
   return true;
 }
 function cola() { return LS.get('pan_cola', []); }
+// Hábitos y objetivos necesitan el script de Comidas 2 (se publica solo desde GitHub, hasta 3 horas después que Panel):
+// mientras la hoja tenga el 1, esos cambios esperan en la cola en vez de rechazarse y perderse.
+const ACCIONES_V2 = new Set(['guardarHabito', 'guardarObjetivo', 'borrarObjetivo']);
+const enviable = op => LS.get('pan_com_v', 1) >= 2 || !ACCIONES_V2.has(op.action);
 function encolar(op) {
   // Del mismo dato solo cuenta el último cambio (si aún no va en camino)
   let q = cola();
@@ -80,7 +89,7 @@ function encolar(op) {
   clearTimeout(ENVIO_T); ENVIO_T = setTimeout(enviar, 1500);
 }
 async function enviar() {
-  if (ENVIANDO || !conectada('com') || navigator.onLine === false || !cola().length) return;
+  if (ENVIANDO || !conectada('com') || navigator.onLine === false || !cola().some(enviable)) return;
   ENVIANDO = true; pintarSync();
   let fallo = false;
   const rechazados = [];
@@ -94,7 +103,7 @@ async function enviar() {
     }
     if (verificada) COM_ERROR = null;
     for (let vuelta = 0; verificada && vuelta < 50; vuelta++) {
-      const lote = cola().slice(0, 80);
+      const lote = cola().filter(enviable).slice(0, 80);
       if (!lote.length) break;
       const ids = new Set(lote.map(x => x.id));
       LS.set('pan_cola', cola().map(x => ids.has(x.id) ? Object.assign(x, { enviado: true }) : x));
@@ -138,7 +147,10 @@ async function bajarComidas(avisar, intento) {
     if (ENVIOS !== n0 && (intento || 0) < 2) { repetir = true; return; }   // se subió algo mientras leía: se vuelve a leer
     try { revisarScript('com', d); } catch (e) { COM_ERROR = e.message; if (avisar) toast('Comidas: ' + COM_ERROR); return; }   // nunca se borra lo tuyo con datos de otra hoja
     COM_ERROR = null;
-    const base = { registro: d.registro || [], guardadas: d.guardadas || [], plan: d.plan || [], metas: d.metas && d.metas.kcal ? d.metas : null };
+    LS.set('pan_com_v', Number(d.version) || 1);
+    // Con el script 1 (sin hábitos ni objetivos) se quedan los del celular
+    const base = { registro: d.registro || [], guardadas: d.guardadas || [], plan: d.plan || [], metas: d.metas && d.metas.kcal ? d.metas : null,
+      habitos: Array.isArray(d.habitos) ? d.habitos : (DB.habitos || []), objetivos: Array.isArray(d.objetivos) ? d.objetivos : (DB.objetivos || []) };
     // La primera vez que este celular lee esta hoja: sube lo que tengas en el celular y la hoja no tenga
     // (tus dos comidas de siempre, y cualquier registro o plan que no haya llegado) y tus metas si la hoja aún no tiene.
     // Después, lo que diga la hoja manda.
@@ -156,7 +168,8 @@ async function bajarComidas(avisar, intento) {
     DB = base; guardarDB();
     LS.set('pan_ult_com', Date.now());
     if (avisar) toast('Comidas al día ✓');
-    if (TAB === 'comidas' && !HOJA_FN) pintar();
+    if (!HOJA_FN) pintar();
+    if (typeof programarAvisos === 'function') programarAvisos();
   } catch (e) {
     if (avisar) toast('Comidas: ' + mensajeError(e));
   } finally {
@@ -167,7 +180,7 @@ async function bajarComidas(avisar, intento) {
 async function sincronizar(avisar) {
   if (!conectada('com')) return;
   await enviar();
-  if (!cola().some(x => !x.intentos)) await bajarComidas(avisar);
+  if (!cola().some(x => !x.intentos && enviable(x))) await bajarComidas(avisar);
 }
 
 /* ===================== Lo que comes: lo registras en tu app Gym ===================== */
