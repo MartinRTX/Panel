@@ -117,13 +117,25 @@ function claveDe(f) { return String((conexiones()[f] || {}).clave || ''); }
 const conectada = f => !!(urlDe(f) && claveDe(f));
 function guardarConexion(f, datos) { const c = conexiones(); c[f] = Object.assign({}, c[f], datos); LS.set('pan_conexion', c); }
 
+// Identificador de este celular (al azar, se crea una vez). Va en cada llamada junto con la clave: el script de Gym 9.0
+// recuerda los celulares que ya entraron con la clave buena y, si alguien se pone a probar claves, solo ellos siguen entrando.
+function dispositivo() {
+  let d = LS.get('pan_disp', '');
+  if (!/^[0-9a-f]{32}$/.test(d)) {
+    const b = new Uint8Array(16);
+    try { crypto.getRandomValues(b); } catch (e) { for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); }
+    d = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    LS.set('pan_disp', d);
+  }
+  return d;
+}
 // Todo por POST con text/plain (Apps Script no contesta la verificación previa de CORS) y la clave en el cuerpo, nunca en el link
 async function llamar(f, cuerpo, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const t = ctl ? setTimeout(() => ctl.abort(), ms || 30000) : null;
   try {
     const r = await fetch(urlDe(f), { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({ k: claveDe(f) }, cuerpo)), signal: ctl ? ctl.signal : undefined });
+      body: JSON.stringify(Object.assign({ k: claveDe(f), d: dispositivo() }, cuerpo)), signal: ctl ? ctl.signal : undefined });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Error de la API');
     return j.result;
@@ -133,6 +145,7 @@ function mensajeError(e) {
   const m = String(e && e.message || e);
   if (e && e.name === 'AbortError') return 'Google tardó demasiado en contestar. Intenta de nuevo.';
   if (/Clave/.test(m)) return 'La clave no coincide con la de Apps Script.';
+  if (/Demasiados intentos/.test(m)) return 'Alguien probó muchas claves equivocadas: por seguridad, este celular puede entrar otra vez en 15 minutos.';
   if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'Sin conexión con Google. Revisa tu internet.';
   if (/JSON|Unexpected token|<!DOCTYPE/i.test(m)) return 'Apps Script no dejó entrar: revisa que la implementación diga "Cualquier usuario".';
   return m;

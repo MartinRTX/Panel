@@ -50,7 +50,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   const gymMetas = { p: 120, kcal: 1850, c: 200, g: 59, fib: 25, auto: true, mant: 2300, mantReal: 1850, porque: 'vas lento (0 %/sem)', deGym: true };
   // conPanel: script de Gym 8.9+ (acción "panel": todo en una llamada). conPanelGs: script 8.1+ (comidasPanel aparte)
   let conPanel = true, conPanelGs = true, llamadasCom = 0;
-  const llamadasGym = [];
+  const llamadasGym = [], dispositivos = new Set();
   const paquetePanel = () => {
     const d = EJEMPLO.gym(hoyH), g = CALC.gymHoy(d, hoyH, 4);
     return { version: 2, scriptVersion: '8.9', todayKey: d.todayKey, sugGrupo: d.sugGrupo, ultimoGrupo: d.ultimoGrupo, ultimoGrupoFecha: d.ultimoGrupoFecha, dias: d.dias, ultimoPeso: d.ultimoPeso,
@@ -64,6 +64,7 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
     let r;
     if (/GYMTEST/.test(u)) {
       llamadasGym.push(cuerpo.action);
+      if (!/^[0-9a-f]{32}$/.test(cuerpo.d || '')) dispositivos.add('FALTA'); else dispositivos.add(cuerpo.d);
       if (cuerpo.k !== 'secreta') r = { ok: false, error: 'Clave incorrecta' };
       else if (cuerpo.action === 'panel' && conPanel) r = { ok: true, result: paquetePanel() };
       else if (cuerpo.action === 'data') r = { ok: true, result: Object.assign(EJEMPLO.gym(hoyH), { comidasDias: { [hoyH]: gymComidas[hoyH] }, metaProteina: gymMetas.p }) };
@@ -135,6 +136,8 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   ok(llamadasGym.includes('panel') && !llamadasGym.includes('data') && !llamadasGym.includes('comidasPanel'),
     'Gym se lee en UNA llamada (panel), sin bajar el paquete completo de la app (' + [...new Set(llamadasGym)].join(', ') + ')');
   ok(await pagina.evaluate(() => DATOS.gym.d.hoy && CALC.gymHoy(DATOS.gym.d, hoy(), 4).deGym === true && !DATOS.gym.d.exercises), 'la rutina de hoy es la que decidió Gym');
+  ok(dispositivos.size === 1 && !dispositivos.has('FALTA') && await pagina.evaluate(() => JSON.parse(localStorage.getItem('pan_disp')) === dispositivo()),
+    'cada llamada lleva el identificador de este celular (siempre el mismo)');
   await pagina.click('.appbar .iconbtn'); await pagina.waitForSelector('.sheet.show');
   const aj = await pagina.locator('.sheet').innerText();
   ok(/Las calcula tu app Gym/.test(aj) && /1,850 kcal/.test(aj) && !(await pagina.locator('#m-kcal').count()), 'Ajustes muestra las metas de Gym sin editarlas aquí');
