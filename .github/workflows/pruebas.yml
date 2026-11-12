@@ -1,6 +1,7 @@
 # Pruebas automáticas en cada push y pull request (tarda menos de un minuto):
 #  - sintaxis de la app y del Apps Script, los scripts juntos como los carga index.html, y que sw.js guarde todo
 #  - cálculos (rutina, saldos, macros, resumen) y apps-script/Comidas.gs sobre una hoja de mentira
+# Y al final, en main: publica la página SOLO si todo pasó (ver el trabajo "publicar" abajo).
 name: Pruebas
 
 on:
@@ -23,3 +24,56 @@ jobs:
         run: node herramientas/revisar.js
       - name: Cálculos y Apps Script de Comidas
         run: node --test tests/*.test.js
+
+  # ---- Publicar la página: SOLO si todo lo de arriba pasó, y solo desde main ----
+  # Para que esto mande: Settings › Pages › Build and deployment › Source: "GitHub Actions" (una sola vez).
+  # Mientras Pages siga en "Deploy from a branch", GitHub publica main por su cuenta (pasen o no las pruebas):
+  # "modo" lo detecta, avisa y "publicar" se salta. No rompe nada en ninguno de los dos casos.
+  modo:
+    needs: [pruebas]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: read
+    outputs:
+      pages: ${{ steps.ver.outputs.pages }}
+    steps:
+      - name: ¿Pages ya publica desde GitHub Actions?
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MODO=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null || echo desconocido)
+          echo "Pages: $MODO"
+          echo "pages=$MODO" >> "$GITHUB_OUTPUT"
+          if [ "$MODO" != "workflow" ]; then
+            echo "::warning::Pages sigue publicando la rama main por su cuenta, sin esperar las pruebas. Cámbialo en Settings › Pages › Source: GitHub Actions."
+          fi
+
+  publicar:
+    needs: modo
+    if: needs.modo.outputs.pages == 'workflow'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.subir.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lo que se publica (los mismos archivos de siempre)
+        run: |
+          mkdir _sitio
+          rsync -a --exclude .git --exclude .github --exclude _sitio --exclude node_modules ./ _sitio/
+          touch _sitio/.nojekyll
+          test -f _sitio/index.html && test -f _sitio/sw.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sitio
+      - uses: actions/deploy-pages@v4
+        id: subir
