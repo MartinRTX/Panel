@@ -260,3 +260,48 @@ test('sugerirMeta: con lo de la semana pasada', () => {
   assert.strictEqual(CALC.sugerirMeta('gasto', { gasto: { prom4: 2345, total: 9000 } }), 2100);
   assert.strictEqual(CALC.sugerirMeta('gasto', {}), 2000);
 });
+
+/* ----- Lo que Gym decide (acción "panel" del script de Gym 8.9+) ----- */
+test('Rutina de hoy: si Gym ya la decidió (d.hoy) y los datos son de hoy, Panel muestra eso; con datos viejos deduce', () => {
+  const hoyGym = { grupo: 'Legs', entreno: false, proximo: 'Push', descansa: true, semanaCarrera: true, visperaCarrera: true, diaCarrera: false };
+  const d = { todayKey: JUE, sugGrupo: 'Legs', ultimoGrupo: 'Pull', ultimoGrupoFecha: '2026-10-28', dias: [1, 2, 3, 4, 5], carrera: { fecha: '2026-10-30', km: 5 }, hoy: hoyGym };
+  let g = CALC.gymHoy(d, JUE, 4);
+  assert.deepStrictEqual([g.grupo, g.entreno, g.proximo, g.descansa, g.semanaCarrera, g.visperaCarrera, g.diaCarrera, g.deGym], ['Legs', false, 'Push', true, true, true, false, true]);
+  // Lo de Gym manda aunque aquí saldría otra cosa (p. ej. Gym cambió una regla y Panel aún no)
+  g = CALC.gymHoy(Object.assign({}, d, { hoy: Object.assign({}, hoyGym, { descansa: false, visperaCarrera: false }) }), JUE, 4);
+  assert.deepStrictEqual([g.descansa, g.visperaCarrera], [false, false]);
+  // Al día siguiente con los mismos datos guardados (sin señal): d.hoy ya no vale, se deduce (es el día de la carrera)
+  g = CALC.gymHoy(d, '2026-10-30', 4);
+  assert.deepStrictEqual([g.grupo, g.deGym, g.diaCarrera, g.visperaCarrera, g.descansa], ['Legs', false, true, false, true]);
+  // Sin carrera en Gym: la de respaldo (config.js) se calcula aquí aunque el resto venga de Gym
+  g = CALC.gymHoy(Object.assign({}, d, { carrera: null, hoy: Object.assign({}, hoyGym, { descansa: false, semanaCarrera: false, visperaCarrera: false }) }), JUE, 4, { fecha: '2026-10-30', nombre: '5 km' });
+  assert.deepStrictEqual([g.deGym, g.visperaCarrera, g.descansa], [true, true, true]);
+  // Un d.hoy raro (grupo que no existe) no se usa
+  assert.strictEqual(CALC.gymHoy(Object.assign({}, d, { hoy: { grupo: 'Yoga' } }), JUE, 4).deGym, false);
+});
+
+// El contrato con Gym: casos generados por las pruebas del script de Gym (repo Gym-script, tests/panel.test.js) con lo que
+// el servidor decide. Si este archivo cambia allá, se copia aquí tal cual y estas pruebas dicen si Panel sigue de acuerdo.
+const CONTRATO = require('./contrato-gym.json');
+const decision = g => ({ grupo: g.grupo, entreno: g.entreno, proximo: g.proximo, descansa: g.descansa, semanaCarrera: g.semanaCarrera, visperaCarrera: g.visperaCarrera, diaCarrera: g.diaCarrera });
+test('Contrato con Gym: Panel muestra lo que Gym decide, y su regla de respaldo (datos sin d.hoy) da lo mismo', () => {
+  assert.ok(CONTRATO.casos.length >= 10);
+  CONTRATO.casos.forEach(c => {
+    const d = c.gym, hoyK = d.todayKey;
+    assert.deepStrictEqual(decision(CALC.gymHoy(d, hoyK, 4)), d.hoy, c.nombre + ' (con lo de Gym)');
+    const sinHoy = Object.assign({}, d); delete sinHoy.hoy;
+    assert.deepStrictEqual(decision(CALC.gymHoy(sinHoy, hoyK, 4)), d.hoy, c.nombre + ' (regla de respaldo de Panel)');
+  });
+});
+
+test('Contrato con Gym: el paquete trae todo lo que Panel lee (semana, km, cuerpo, récords)', () => {
+  const d = CONTRATO.casos[0].gym, hoyK = d.todayKey, lunes = CALC.lunesDe(hoyK);
+  assert.strictEqual(d.version, 2);
+  const g = CALC.gymHoy(d, hoyK, 4);
+  assert.deepStrictEqual([g.diasSemana, g.semana.slice(0, 3), g.kmSemana, g.fresca], [2, [true, true, false], 4, true]);
+  assert.deepStrictEqual([g.peso.ultimo, g.peso.promedio7, g.peso.cambio, g.cintura.ultima, g.cintura.cambio, g.cintura.meta], [77.8, 78.05, -0.6, 88, -1, 82]);   // -0.65 de Gym, a un decimal
+  assert.deepStrictEqual(g.carrera, { fecha: '2026-11-21', nombre: '5K', km: 5 });
+  // La revisión de la semana pasada sale de las 8 semanas que manda Gym
+  const s = CALC.semanaGym(d, CALC.sumarDias(lunes, -7), 4);
+  assert.deepStrictEqual([s.dias, s.km, s.kmAntes, s.peso.v, s.cintura.v, s.records.length], [4, 11.2, 4, 78.3, 88, 2]);
+});

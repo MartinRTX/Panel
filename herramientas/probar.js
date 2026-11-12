@@ -48,12 +48,24 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   }
   // Las metas que calcula la app Gym (script 8.1): Panel solo las muestra
   const gymMetas = { p: 120, kcal: 1850, c: 200, g: 59, fib: 25, auto: true, mant: 2300, mantReal: 1850, porque: 'vas lento (0 %/sem)', deGym: true };
-  let conPanelGs = true, llamadasCom = 0;
+  // conPanel: script de Gym 8.9+ (acción "panel": todo en una llamada). conPanelGs: script 8.1+ (comidasPanel aparte)
+  let conPanel = true, conPanelGs = true, llamadasCom = 0;
+  const llamadasGym = [];
+  const paquetePanel = () => {
+    const d = EJEMPLO.gym(hoyH), g = CALC.gymHoy(d, hoyH, 4);
+    return { version: 2, scriptVersion: '8.9', todayKey: d.todayKey, sugGrupo: d.sugGrupo, ultimoGrupo: d.ultimoGrupo, ultimoGrupoFecha: d.ultimoGrupoFecha, dias: d.dias, ultimoPeso: d.ultimoPeso,
+      descargaCarrera: g.semanaCarrera, carrera: Object.assign({ km: 5 }, d.carrera),
+      hoy: { grupo: g.grupo, entreno: g.entreno, proximo: g.proximo, descansa: g.descansa, semanaCarrera: g.semanaCarrera, visperaCarrera: g.visperaCarrera, diaCarrera: g.diaCarrera },
+      resumen: d.resumen, trotes: d.trotes, cuerpo: d.cuerpo,
+      comidas: { dias: gymComidas, desde: CALC.sumarDias(hoyH, -41), hoy: hoyH, metas: gymMetas, version: 1 } };
+  };
   const contestar = async ruta => {
     const u = ruta.request().url(), cuerpo = JSON.parse(ruta.request().postData() || '{}');
     let r;
     if (/GYMTEST/.test(u)) {
+      llamadasGym.push(cuerpo.action);
       if (cuerpo.k !== 'secreta') r = { ok: false, error: 'Clave incorrecta' };
+      else if (cuerpo.action === 'panel' && conPanel) r = { ok: true, result: paquetePanel() };
       else if (cuerpo.action === 'data') r = { ok: true, result: Object.assign(EJEMPLO.gym(hoyH), { comidasDias: { [hoyH]: gymComidas[hoyH] }, metaProteina: gymMetas.p }) };
       else if (!conPanelGs || cuerpo.action !== 'comidasPanel') r = { ok: false, error: 'Acción desconocida' };
       else r = { ok: true, result: { dias: gymComidas, desde: CALC.sumarDias(hoyH, -41), hoy: hoyH, metas: gymMetas, version: 1 } };
@@ -120,6 +132,9 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   // Con Gym conectado, las metas son las que calcula Gym (Panel ya no las edita ni se las manda)
   await pagina.waitForFunction(() => metas().deGym, null, { timeout: 8000 }).catch(() => {});
   ok(await pagina.evaluate(() => metas().kcal === 1850 && metas().p === 120), 'las metas son las de Gym (1,850 kcal y 120 g)');
+  ok(llamadasGym.includes('panel') && !llamadasGym.includes('data') && !llamadasGym.includes('comidasPanel'),
+    'Gym se lee en UNA llamada (panel), sin bajar el paquete completo de la app (' + [...new Set(llamadasGym)].join(', ') + ')');
+  ok(await pagina.evaluate(() => DATOS.gym.d.hoy && CALC.gymHoy(DATOS.gym.d, hoy(), 4).deGym === true && !DATOS.gym.d.exercises), 'la rutina de hoy es la que decidió Gym');
   await pagina.click('.appbar .iconbtn'); await pagina.waitForSelector('.sheet.show');
   const aj = await pagina.locator('.sheet').innerText();
   ok(/Las calcula tu app Gym/.test(aj) && /1,850 kcal/.test(aj) && !(await pagina.locator('#m-kcal').count()), 'Ajustes muestra las metas de Gym sin editarlas aquí');
@@ -249,6 +264,25 @@ const ok = (cond, msg) => { console.log((cond ? '✓ ' : '✗ ') + msg); if (!co
   await p2.locator('#u-com ~ .btns .btn:not(.ghost)').click();
   await p2.waitForFunction(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length === 0, null, { timeout: 15000 }).catch(() => {});
   ok(await p2.evaluate(() => JSON.parse(localStorage.getItem('pan_cola') || '[]').length) === 0, 'al corregir la URL se sube lo pendiente');
+
+  // 7b. Script de Gym 8.1 a 8.8 (sin "panel"): como antes, data + comidasPanel, y se ve lo mismo
+  conPanel = false; llamadasGym.length = 0;
+  const ctx4 = await navegador.newContext({ viewport: { width: 412, height: 915 }, serviceWorkers: 'block', timezoneId: 'America/Hermosillo' });
+  await ctx4.route('https://script.google.com/**', ruta => ctx.__ruta(ruta));
+  await ctx4.addInitScript(() => { if (!localStorage.getItem('pan_conexion')) localStorage.setItem('pan_conexion', JSON.stringify({
+    gym: { url: 'https://script.google.com/macros/s/GYMTEST/exec', clave: 'secreta' } })); });
+  const p4 = await ctx4.newPage();
+  p4.on('pageerror', e => errores.push(String(e)));
+  await p4.goto(base);
+  await p4.waitForSelector('.hero.gym');
+  await p4.waitForFunction(() => metas().deGym, null, { timeout: 8000 }).catch(() => {});
+  await p4.click('#tComidas');
+  await p4.click('.daynav .arrow >> nth=0');
+  const t4 = await p4.locator('#view').innerText();
+  ok(/quesadillas de harina/.test(t4) && ['panel', 'data', 'comidasPanel'].every(a => llamadasGym.includes(a)) && await p4.evaluate(() => metas().kcal === 1850 && !DATOS.gym.d.hoy),
+    'script de Gym 8.1–8.8: Panel lee como antes (data + comidasPanel) y muestra lo mismo');
+  await p4.reload(); await p4.waitForSelector('#view .seg'); await p4.waitForTimeout(1200);     // quedó en la pestaña Comidas
+  ok(llamadasGym.filter(a => a === 'panel').length === 1, 'y no vuelve a pedir "panel" hasta el día siguiente');
 
   // 8. Script de Gym sin Panel.gs: solo hoy y ayer (lo que ya manda la app Gym) y un aviso
   conPanelGs = false;

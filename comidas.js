@@ -184,20 +184,25 @@ async function sincronizar(avisar) {
 }
 
 /* ===================== Lo que comes: lo registras en tu app Gym ===================== */
-// Panel lee la pestaña "Comidas" de tu hoja de Gym (acción comidasPanel del script de Gym 8.1, repo Gym-script) y solo la muestra.
-// Con un script de Gym más viejo, usa lo que ya manda la app Gym (hoy y ayer).
+// Panel lee la pestaña "Comidas" de tu hoja de Gym y solo la muestra. Con el script de Gym 8.9+ llega en la misma lectura que
+// todo lo demás (acción panel → usarComidasDeGym); con uno anterior, en otra llamada (comidasPanel, script 8.1+);
+// y con uno más viejo usa lo que ya manda la app Gym (hoy y ayer).
 // Lo que registraste en Panel antes de este cambio (DB.registro) se sigue sumando, marcado como "de Panel".
 const DIAS_GYM = 42;
 let COMGYM = LS.get('pan_comgym', null);     // { dias: { fecha: [items] }, ts, metasGym }
 let COMGYM_ERROR = null, LEYENDO_GYM = false, REG_CACHE = null;
+function usarComidasDeGym(c, ts) {
+  if (!c || typeof c.dias !== 'object') return;
+  COMGYM = { dias: c.dias, ts: ts || Date.now(), metasGym: c.metas || null };
+  LS.set('pan_comgym', COMGYM); COMGYM_ERROR = null; REG_CACHE = null;
+}
 async function leerComidasGym(avisar) {
   if (!conectada('gym') || LEYENDO_GYM) return;
   LEYENDO_GYM = true;
   try {
     const d = await llamar('gym', { action: 'comidasPanel', args: [DIAS_GYM] }, 60000);
     if (!d || typeof d.dias !== 'object') throw new Error('Esa URL no es la de tu script de Gym');
-    COMGYM = { dias: d.dias, ts: Date.now(), metasGym: d.metas || null };
-    LS.set('pan_comgym', COMGYM); COMGYM_ERROR = null; REG_CACHE = null;
+    usarComidasDeGym(d);
   } catch (e) {
     COMGYM_ERROR = /Acción desconocida/.test(e.message) ? 'sin-panel-gs' : mensajeError(e);
     if (avisar && COMGYM_ERROR !== 'sin-panel-gs') toast('Comidas de Gym: ' + COMGYM_ERROR);

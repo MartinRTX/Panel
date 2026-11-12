@@ -1,0 +1,1920 @@
+{
+ "aviso": "Lo genera Gym-script (tests/panel.test.js). No lo edites a mano: cópialo tal cual a Panel/tests/contrato-gym.json.",
+ "casos": [
+  {
+   "nombre": "Día normal: ayer Legs, hoy toca Push",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-21",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 78.05,
+     "cambioSemana": -0.65,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Ya entrenaste hoy (Push): sigue Pull",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Push",
+    "ultimoGrupoFecha": "2026-11-04",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-21",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": true,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 3,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 3
+      }
+     ],
+     "promedio7": 78.05,
+     "cambioSemana": -0.65,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 3,
+     "records": [
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-11-04",
+       "w": 45,
+       "r": 10,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Sábado: no es tu día de gym",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-07",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-21",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": true,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 77.9,
+     "cambioSemana": -0.5,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Tus días son L, M, J y V: el miércoles descansas",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-21",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": true,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 78.05,
+     "cambioSemana": -0.65,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Semana de la carrera (sábado 07/11): descarga",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": true,
+    "carrera": {
+     "fecha": "2026-11-07",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": true,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 78.05,
+     "cambioSemana": -0.65,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Víspera de la carrera: descansas",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-06",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": true,
+    "carrera": {
+     "fecha": "2026-11-07",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": true,
+     "semanaCarrera": true,
+     "visperaCarrera": true,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 77.95,
+     "cambioSemana": -0.55,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Día de la carrera: gym descansa",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-07",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": true,
+    "carrera": {
+     "fecha": "2026-11-07",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": true,
+     "semanaCarrera": true,
+     "visperaCarrera": false,
+     "diaCarrera": true
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 77.9,
+     "cambioSemana": -0.5,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "La carrera ya pasó: semana normal",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-09",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-07",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 0,
+     "diasSemanas": [
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      },
+      {
+       "l": "2026-11-09",
+       "n": 0
+      }
+     ],
+     "promedio7": 77.8,
+     "cambioSemana": -0.4,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 4,
+     "racha": 0,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      },
+      {
+       "d": "09/11",
+       "km": 0
+      }
+     ],
+     "km7": 4
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Sin carrera",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": "Legs",
+    "ultimoGrupoFecha": "2026-11-03",
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": 77.8,
+    "descargaCarrera": false,
+    "carrera": null,
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 2,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 3
+      },
+      {
+       "l": "2026-10-26",
+       "n": 4
+      },
+      {
+       "l": "2026-11-02",
+       "n": 2
+      }
+     ],
+     "promedio7": 78.05,
+     "cambioSemana": -0.65,
+     "cintura": 88,
+     "cambioCintura": -2,
+     "km7": 10.2,
+     "racha": 2,
+     "records": [
+      {
+       "ej": "Curl femoral",
+       "k": "2026-11-03",
+       "w": 70,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Prensa",
+       "k": "2026-11-03",
+       "w": 190,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Curl con mancuernas",
+       "k": "2026-11-02",
+       "w": 20,
+       "r": 12,
+       "unit": "lb",
+       "tipo": "fuerza"
+      },
+      {
+       "ej": "Jalón al pecho",
+       "k": "2026-11-02",
+       "w": 95,
+       "r": 9,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press militar en máquina",
+       "k": "2026-10-30",
+       "w": 65,
+       "r": 8,
+       "unit": "lb",
+       "tipo": "fuerza y peso"
+      },
+      {
+       "ej": "Press de banca plano con barra",
+       "k": "2026-10-30",
+       "w": 42.5,
+       "r": 11,
+       "unit": "lb",
+       "tipo": "fuerza"
+      }
+     ]
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 4
+      },
+      {
+       "d": "26/10",
+       "km": 11.2
+      },
+      {
+       "d": "02/11",
+       "km": 4
+      }
+     ],
+     "km7": 10.2
+    },
+    "cuerpo": {
+     "serie": [
+      {
+       "d": "11/10",
+       "peso": null,
+       "cint": 90
+      },
+      {
+       "d": "18/10",
+       "peso": 79.7,
+       "cint": 89.5
+      },
+      {
+       "d": "25/10",
+       "peso": 79,
+       "cint": 89
+      },
+      {
+       "d": "01/11",
+       "peso": 78.3,
+       "cint": 88
+      }
+     ],
+     "actual": 88,
+     "meta": 82,
+     "base": 90
+    }
+   }
+  },
+  {
+   "nombre": "Hoja nueva, sin nada registrado",
+   "gym": {
+    "version": 2,
+    "todayKey": "2026-11-04",
+    "sugGrupo": "Push",
+    "ultimoGrupo": null,
+    "ultimoGrupoFecha": null,
+    "dias": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ultimoPeso": null,
+    "descargaCarrera": false,
+    "carrera": {
+     "fecha": "2026-11-21",
+     "nombre": "5K",
+     "km": 5
+    },
+    "hoy": {
+     "grupo": "Push",
+     "entreno": false,
+     "proximo": "Pull",
+     "descansa": false,
+     "semanaCarrera": false,
+     "visperaCarrera": false,
+     "diaCarrera": false
+    },
+    "resumen": {
+     "semana": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ],
+     "diasSemana": 0,
+     "diasSemanas": [
+      {
+       "l": "2026-09-14",
+       "n": 0
+      },
+      {
+       "l": "2026-09-21",
+       "n": 0
+      },
+      {
+       "l": "2026-09-28",
+       "n": 0
+      },
+      {
+       "l": "2026-10-05",
+       "n": 0
+      },
+      {
+       "l": "2026-10-12",
+       "n": 0
+      },
+      {
+       "l": "2026-10-19",
+       "n": 0
+      },
+      {
+       "l": "2026-10-26",
+       "n": 0
+      },
+      {
+       "l": "2026-11-02",
+       "n": 0
+      }
+     ],
+     "promedio7": null,
+     "cambioSemana": null,
+     "cintura": null,
+     "cambioCintura": null,
+     "km7": 0,
+     "racha": 0,
+     "records": []
+    },
+    "trotes": {
+     "semanas": [
+      {
+       "d": "14/09",
+       "km": 0
+      },
+      {
+       "d": "21/09",
+       "km": 0
+      },
+      {
+       "d": "28/09",
+       "km": 0
+      },
+      {
+       "d": "05/10",
+       "km": 0
+      },
+      {
+       "d": "12/10",
+       "km": 0
+      },
+      {
+       "d": "19/10",
+       "km": 0
+      },
+      {
+       "d": "26/10",
+       "km": 0
+      },
+      {
+       "d": "02/11",
+       "km": 0
+      }
+     ],
+     "km7": 0
+    },
+    "cuerpo": {
+     "serie": [],
+     "actual": null,
+     "meta": 82,
+     "base": null
+    }
+   }
+  }
+ ]
+}

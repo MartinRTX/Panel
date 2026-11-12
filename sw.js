@@ -1,6 +1,6 @@
 // Guarda la app en el celular para que abra rápido y funcione sin señal.
 // Cuando subas una versión nueva de la app, cambia el número de VERSION (y VERSION_APP en app.js).
-const VERSION = 'panel-v1.7';
+const VERSION = 'panel-v1.8';
 const ARCHIVOS = [
   './', './index.html', './seguridad.js', './tema.js', './config.js', './calculos.js', './ejemplo.js', './app.js', './comidas.js', './semana.js', './avisos.js', './manifest.webmanifest',
   './fonts/bricolage.woff2', './fonts/inter.woff2', './favicon-32.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'

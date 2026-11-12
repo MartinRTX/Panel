@@ -5,7 +5,7 @@
  * se sube a la hoja "Comidas 2026" en cuanto está conectada.
  * Mientras Gym o Finanzas no estén conectadas, Hoy muestra datos de ejemplo (ejemplo.js).
  */
-const VERSION_APP = '1.7';
+const VERSION_APP = '1.8';
 
 /* ===================== Utilidades ===================== */
 const LS = {
@@ -152,8 +152,8 @@ function cargarCache() {
 const toma = (o, ks) => { const x = {}; if (o) ks.forEach(k => { if (o[k] !== undefined) x[k] = o[k]; }); return x; };
 // Solo lo que usa Hoy (para no llenar el celular con el catálogo de ejercicios o el historial)
 function recortarGym(d) {
-  return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso', 'comidasDias', 'macros7']), {
-    resumen: Object.assign(toma(d.resumen, ['semana', 'diasSemana', 'diasSemanas', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7']),
+  return Object.assign(toma(d, ['todayKey', 'sugGrupo', 'ultimoGrupo', 'ultimoGrupoFecha', 'dias', 'ultimoPeso', 'comidasDias', 'macros7', 'hoy', 'version']), {
+    resumen: Object.assign(toma(d.resumen, ['semana', 'diasSemana', 'diasSemanas', 'promedio7', 'cambioSemana', 'cintura', 'cambioCintura', 'km7', 'racha']),
       { records: ((d.resumen || {}).records || []).map(r => toma(r, ['ej', 'k', 'w', 'r', 'unit', 'tipo'])) }),
     trotes: toma(d.trotes, ['semanas', 'km7']), cuerpo: toma(d.cuerpo, ['serie', 'actual', 'meta', 'base']),
     descargaCarrera: !!d.descargaCarrera, carrera: d.carrera && d.carrera.fecha ? toma(d.carrera, ['fecha', 'nombre', 'km']) : null });
@@ -184,31 +184,44 @@ function urlsRepetidas() {
   ['gym', 'fin', 'com'].forEach(f => { const u = urlDe(f); if (!u) return; if (vistas[u]) rep.push([vistas[u], f]); else vistas[u] = f; });
   return rep.map(([a, b]) => FUENTES[a].nombre + ' y ' + FUENTES[b].nombre);
 }
+// Gym en UNA llamada (script de Gym 8.9+, acción "panel"): un paquete chico y ya calculado por Gym (la rutina de hoy, la
+// semana, el cuerpo y lo que comiste). Antes eran dos llamadas y el paquete completo de la app Gym (catálogo e historial).
+// Con un script anterior se lee como antes (data + comidasPanel) y "panel" se vuelve a intentar al día siguiente.
+async function leerGym() {
+  if (LS.get('pan_gym_sin_panel', '') !== hoy()) {
+    try { return { d: await llamar('gym', { action: 'panel', args: [DIAS_GYM] }, 60000), panel: true }; }
+    catch (e) { if (!/Acción desconocida/.test(e.message)) throw e; LS.set('pan_gym_sin_panel', hoy()); }
+  }
+  return { d: await llamar('gym', { action: 'data', args: [] }), panel: false };
+}
 async function actualizarFuente(f, avisar) {
   if (!conectada(f) || CARGANDO[f]) return;
   CARGANDO[f] = true;
+  let faltanComidas = false;
   try {
-    const d = await llamar(f, { action: 'data', args: [] });
+    const x = f === 'gym' ? await leerGym() : { d: await llamar(f, { action: 'data', args: [] }) }, d = x.d;
     revisarScript(f, d);
     const rec = f === 'gym' ? recortarGym(d) : recortarFin(d), ts = Date.now();
     if (f === 'gym') anotarSemanaGym(rec);
     LS.set('pan_' + f, { d: rec, ts });
     DATOS[f] = { d: rec, ts, ejemplo: false, error: null };
+    if (f === 'gym') { if (x.panel) usarComidasDeGym(d.comidas, ts); else faltanComidas = true; }
     if (typeof programarAvisos === 'function') programarAvisos();
   } catch (e) {
     DATOS[f] = Object.assign({}, DATOS[f], { error: mensajeError(e) });
     if (avisar) toast(FUENTES[f].nombre + ': ' + mensajeError(e));
   } finally {
     CARGANDO[f] = false;
-    if (TAB === 'hoy' && !HOJA_FN) pintar();
+    if (!HOJA_FN && (TAB === 'hoy' || f === 'gym')) pintar();
   }
+  if (faltanComidas) await leerComidasGym(avisar);     // script de Gym anterior a la 8.9: las comidas van en otra llamada
 }
 async function actualizarHoy(avisar) {
   ULT_HOY = Date.now();
   const algo = conectada('gym') || conectada('fin');
   if (avisar && !algo) return abrirAjustes('conexion');
   if (avisar) toast('Actualizando…');
-  await Promise.all([actualizarFuente('gym', avisar), actualizarFuente('fin', avisar), leerComidasGym(avisar)]);
+  await Promise.all([actualizarFuente('gym', avisar), actualizarFuente('fin', avisar)]);
 }
 
 /* ----- Pantalla Hoy ----- */
@@ -488,8 +501,9 @@ async function probarConexion(f) {
     catch (e) { COM_ERROR = mensajeError(e); toast('Comidas: ' + COM_ERROR); }
   } else {
     DATOS[f] = { d: (LS.get('pan_' + f, null) || {}).d || null, ts: 0, ejemplo: false, error: null };
+    if (f === 'gym') { COMGYM_ERROR = null; LS.del('pan_gym_sin_panel'); }
     await actualizarFuente(f, true);
-    if (f === 'gym') { COMGYM_ERROR = null; await leerComidasGym(); }    // lo que comes y tus metas, también desde Gym
+    // (lo que comes y tus metas llegan en la misma lectura de Gym)
     if (!DATOS[f].error) toast(FUENTES[f].nombre + ' conectada ✓');
   }
   refrescarHoja();

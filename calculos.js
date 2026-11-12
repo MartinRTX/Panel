@@ -26,9 +26,14 @@ const CALC = (() => {
     d = d || {};
     const r = d.resumen || {}, t = d.trotes || {}, cu = d.cuerpo || {};
     const ultimo = GRUPOS3.indexOf(d.ultimoGrupo) >= 0 ? d.ultimoGrupo : null;
-    const entreno = !!(ultimo && d.ultimoGrupoFecha === hoy);
+    // Script de Gym 8.9+ (acción "panel"): lo de hoy ya viene decidido por Gym en d.hoy y se muestra tal cual, mientras los
+    // datos sean de hoy. Si son de otro día (sin señal, o un script anterior), se deduce aquí con la misma regla;
+    // tests/contrato-gym.json (lo genera Gym-script) revisa que las dos den lo mismo.
+    const H = d.hoy && d.todayKey === hoy && GRUPOS3.indexOf(d.hoy.grupo) >= 0 ? d.hoy : null;
+    const entreno = H ? !!H.entreno : !!(ultimo && d.ultimoGrupoFecha === hoy);
     let grupo;
-    if (entreno) grupo = ultimo;
+    if (H) grupo = H.grupo;
+    else if (entreno) grupo = ultimo;
     else if (d.todayKey === hoy || !ultimo) grupo = GRUPOS3.indexOf(d.sugGrupo) >= 0 ? d.sugGrupo : (ultimo ? siguiente(ultimo) : 'Push');
     else grupo = siguiente(ultimo);
     const dias = Array.isArray(d.dias) && d.dias.length ? d.dias : [1, 2, 3, 4, 5];
@@ -47,12 +52,15 @@ const CALC = (() => {
     // Semana de la carrera (igual que la app Gym): de lunes al día de la carrera es descarga (mitad de series, mismo peso),
     // la víspera se descansa y el día de la carrera no hay gym. La fecha es la de Gym (respaldo: config.js)
     const car = d.carrera && d.carrera.fecha ? String(d.carrera.fecha).slice(0, 10) : (respaldoCarrera && respaldoCarrera.fecha) || null;
-    const semanaCarrera = !!car && car >= hoy && lunesDe(car) === lunesDe(hoy);
-    const visperaCarrera = !!car && sumarDias(car, -1) === hoy, diaCarrera = car === hoy;
+    // La carrera de Gym manda (y con ella lo que Gym decidió); la de config.js es solo respaldo y se calcula aquí
+    const deGym = !!(H && d.carrera && d.carrera.fecha);
+    const semanaCarrera = deGym ? !!H.semanaCarrera : !!car && car >= hoy && lunesDe(car) === lunesDe(hoy);
+    const visperaCarrera = deGym ? !!H.visperaCarrera : !!car && sumarDias(car, -1) === hoy, diaCarrera = deGym ? !!H.diaCarrera : car === hoy;
     return {
-      semanaCarrera, visperaCarrera, diaCarrera,
-      grupo, nombre: NOMBRE_GRUPO[grupo] || '', entreno, proximo: siguiente(grupo),
-      descansa: !entreno && (dias.indexOf(diaSemana(hoy)) < 0 || visperaCarrera || diaCarrera), ultimo, ultimoFecha: d.ultimoGrupoFecha || null,
+      semanaCarrera, visperaCarrera, diaCarrera, deGym: !!H,
+      grupo, nombre: NOMBRE_GRUPO[grupo] || '', entreno, proximo: H && GRUPOS3.indexOf(H.proximo) >= 0 ? H.proximo : siguiente(grupo),
+      descansa: H ? !!H.descansa || (!entreno && (visperaCarrera || diaCarrera)) : !entreno && (dias.indexOf(diaSemana(hoy)) < 0 || visperaCarrera || diaCarrera),
+      ultimo, ultimoFecha: d.ultimoGrupoFecha || null,
       diasSemana, metaDias: metaDias || 4, semana, kmSemana, semanas, fresca, fechaDatos: d.todayKey || null,
       peso: { ultimo: vacio(d.ultimoPeso) ? (pesos.length ? pesos[pesos.length - 1].v : null) : num(d.ultimoPeso),
               promedio7: vacio(r.promedio7) ? null : num(r.promedio7), cambio: vacio(r.cambioSemana) ? null : r1(r.cambioSemana), serie: pesos },

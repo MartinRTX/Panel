@@ -23,11 +23,26 @@ Martin lo pidió así: Panel no solo se ve, también se usa.
 - Hábitos y objetivos van por la cola de Comidas, pero solo se mandan si la hoja tiene el script 2+ (`pan_com_v`): así, si Panel se
   publica antes que el script, esperan en la cola en vez de rechazarse y perderse.
 
+## Publicar (regla)
+
+`main` se publica sola. Primero se sube la rama de trabajo, se espera a que "Pruebas" salga verde en GitHub en ESE commit y
+solo entonces se adelanta `main` (el 08/11 en Gym se publicó con pruebas rojas por empujar las dos a la vez). El trabajo
+`publicar` de `pruebas.yml` publica la página solo si las pruebas pasan, pero manda únicamente cuando Pages está en
+Settings › Pages › Source: **GitHub Actions**; en "Deploy from a branch" GitHub publica `main` sin esperar y el trabajo solo avisa.
+
 ## Cómo se conecta
 
-- Hoy lee los MISMOS Apps Script de Gym y Finanzas con la acción `data` (POST text/plain, clave en el cuerpo).
-  No escribe nada en esas hojas. Si su respuesta cambia, ajustar `CALC.gymHoy` / `CALC.finanzasHoy` en `calculos.js`
-  (se basan en `app.js` de Gym: `grupoDeHoy`, `datosWidgets`; y de Finanzas: `saldo`, `saldoPersona`, `resumenMes`).
+- **Gym (1.8)**: una sola llamada, acción `panel` del script de Gym 8.9+ (`Gym-script/src/Panel.js`): paquete chico y ya
+  calculado por Gym (rutina de hoy en `d.hoy`, semana, 8 semanas, cuerpo, carrera, récords y las comidas con sus metas).
+  `leerGym()` en `app.js`; con un script anterior cae a `data` + `comidasPanel` y reintenta `panel` al día siguiente
+  (`pan_gym_sin_panel`). **Lo que Gym decide manda**: `CALC.gymHoy` usa `d.hoy` si los datos son de hoy; si son de otro día
+  (sin señal) deduce con su regla de respaldo. `tests/contrato-gym.json` es una copia de `Gym-script/tests/contrato-panel.json`
+  (lo generan las pruebas del script): si allá cambia una regla, se copia aquí y las pruebas dicen si Panel sigue de acuerdo.
+  Nunca editarlo a mano.
+- Finanzas: el MISMO Apps Script de la app con la acción `data` (POST text/plain, clave en el cuerpo); Panel recalcula con
+  `CALC.finanzasHoy` (copia de `saldo`, `saldoPersona`, `resumenMes` de la app Finanzas: si cambian allá, ajustar aquí).
+  Pendiente: darle a Finanzas el mismo trato que a Gym (acción propia + contrato).
+- Panel no escribe nada en las hojas de Gym ni de Finanzas.
 - **Lo que come se registra SOLO en la app Gym** (Martin lo decidió: Gym tiene buscador, cámara, recetas y tupper).
   Panel lo lee con la acción `comidasPanel` del script de Gym (repo privado MartinRTX/Gym-script, `src/Panel.js`, 8.1+; ver GYM-PANEL.md).
   Ese script se publica con clasp desde su repo: NUNCA pedirle a Martin que pegue código en el Apps Script de Gym (se borraría).
